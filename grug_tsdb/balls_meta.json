@@ -1,0 +1,19 @@
+{
+  "fields" : [ {
+    "name" : "field_name",
+    "type" : "INT",
+    "size" : 0
+  }, {
+    "name" : "other",
+    "type" : "BOOLEAN",
+    "size" : 0
+  }, {
+    "name" : "str",
+    "type" : "STRING",
+    "size" : 0
+  }, {
+    "name" : "fl",
+    "type" : "FLOAT",
+    "size" : 0
+  } ]
+}
