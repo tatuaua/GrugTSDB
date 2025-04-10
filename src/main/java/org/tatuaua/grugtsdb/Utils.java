@@ -12,6 +12,14 @@ public class Utils {
         return result;
     }
 
+    public static byte[] stringToByteArray(String input, int bufferSize) {
+        byte[] stringBytes = (input != null ? input : "").getBytes(StandardCharsets.UTF_8);
+        byte[] result = new byte[bufferSize];
+        int bytesToCopy = Math.min(stringBytes.length, bufferSize);
+        System.arraycopy(stringBytes, 0, result, 0, bytesToCopy);
+        return result;
+    }
+
     public static String byteArray256ToString(byte[] input) {
         if (input == null || input.length != 256) {
             return "";
@@ -19,6 +27,22 @@ public class Utils {
 
         int length = 0;
         for (int i = 0; i < 256; i++) {
+            if (input[i] == 0) {
+                break;
+            }
+            length = i + 1;
+        }
+
+        return new String(input, 0, length, StandardCharsets.UTF_8);
+    }
+
+    public static String byteArrayToString(byte[] input) {
+        if (input == null) {
+            return "";
+        }
+
+        int length = 0;
+        for (int i = 0; i < input.length; i++) {
             if (input[i] == 0) {
                 break;
             }

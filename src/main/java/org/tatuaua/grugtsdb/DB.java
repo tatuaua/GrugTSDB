@@ -3,24 +3,26 @@ package org.tatuaua.grugtsdb;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.tatuaua.grugtsdb.model.GrugBucketMetadata;
 import org.tatuaua.grugtsdb.model.GrugField;
+import org.tatuaua.grugtsdb.model.GrugFieldType;
+
+import org.apache.commons.io.FileUtils;
+import org.tatuaua.grugtsdb.model.GrugReadResponse;
 
 import java.io.*;
 import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class IO {
+public class DB {
     private static final File DIR = new File("grug_tsdb");
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     static {
         try {
             if (DIR.exists()) {
-                Files.walk(DIR.toPath())
-                        .filter(Files::isRegularFile)
-                        .map(java.nio.file.Path::toFile)
-                        .forEach(File::delete);
-                Files.deleteIfExists(DIR.toPath());
+                FileUtils.deleteDirectory(DIR);
             }
             Files.createDirectories(DIR.toPath());
         } catch (IOException e) {
@@ -62,7 +64,7 @@ public class IO {
         GrugBucketMetadata metadata = readBucketMetadata(bucketName);
         File bucketFile = new File(DIR, bucketName + ".grug");
 
-        try (DataOutputStream dos = new DataOutputStream(new FileOutputStream(bucketFile))) {
+        try (DataOutputStream dos = new DataOutputStream(new FileOutputStream(bucketFile, true))) {
             for (GrugField field : metadata.getFields()) {
                 Object value = fieldValues.get(field.getName());
                 if (value == null) {
@@ -80,7 +82,7 @@ public class IO {
                         dos.writeFloat((float) value);
                         break;
                     case STRING:
-                        dos.writeBytes(new String((byte[]) fieldValues.get(field.getName())));
+                        dos.writeBytes(new String(Utils.stringToByteArray((String) value, field.getSize())));
                         break;
                     default:
                         throw new IOException("Unsupported field type: " + field.getType());
@@ -89,18 +91,34 @@ public class IO {
         }
     }
 
-    public static String readBucketCombined(String bucketName) throws IOException {
-        StringBuilder b = new StringBuilder();
+    public static GrugReadResponse readFullBucket(String bucketName) throws IOException {
+        GrugBucketMetadata metadata = readBucketMetadata(bucketName);
+        List<GrugField> fields = metadata.getFields();
+        List<Map<String, Object>> data = new ArrayList<>();
         File bucketFile = new File(DIR, bucketName + ".grug");
         try (DataInputStream dis = new DataInputStream(new FileInputStream(bucketFile))) {
-            int intValue = dis.readInt();
-            boolean boolValue = false; //dis.readBoolean();
-            String stringValue = ""; //Utils.byteArray256ToString(dis.readNBytes(256));
-            float floatValue = 0.0f; //dis.readFloat();
-            return "int: " + intValue + "\nbool: " + boolValue + "\nstring: " + stringValue + "\nfloat: " + floatValue;
+            while (dis.available() > 0) {
+                Map<String, Object> record = new HashMap<>();
+                for (GrugField field : fields) {
+                    if (field.getType() == GrugFieldType.INT) {
+                        record.put(field.getName(), dis.readInt());
+                    } else if (field.getType() == GrugFieldType.BOOLEAN) {
+                        record.put(field.getName(), dis.readBoolean());
+                    } else if (field.getType() == GrugFieldType.FLOAT) {
+                        record.put(field.getName(), dis.readFloat());
+                    } else if (field.getType() == GrugFieldType.STRING) {
+                        record.put(field.getName(), Utils.byteArrayToString(dis.readNBytes(field.getSize())));
+                    }
+                }
+                data.add(record);
+            }
         } catch (IOException e) {
             e.printStackTrace();
             throw new IOException("Error reading bucket '" + bucketName + "': ");
         }
+        GrugReadResponse response = new GrugReadResponse();
+        response.setCount(data.size());
+        response.setData(data);
+        return response;
     }
 }

@@ -34,7 +34,7 @@ public class Main {
         fields.add(field3);
         fields.add(field4);
 
-        IO.createBucket("balls", fields);
+        DB.createBucket("balls", fields);
 
         Map<String, Object> values = new HashMap<>();
         values.put("field_name", 69);
@@ -42,8 +42,6 @@ public class Main {
         values.put("str", Utils.stringTo256ByteArray("mystr"));
         values.put("fl", 0.3f);
 
-        IO.writeToBucket("balls", values);
-
-        IO.readBucketCombined("balls");
+        DB.writeToBucket("balls", values);
     }
 }

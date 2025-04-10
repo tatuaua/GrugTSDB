@@ -83,6 +83,12 @@ class APITest {
         grugFieldNode.put("type", GrugFieldType.INT.name());
         grugFieldNode.put("size", 0);
         fieldsArray.add(grugFieldNode);
+
+        ObjectNode grugFieldNode2 = MAPPER.createObjectNode();
+        grugFieldNode2.put("name", "testString");
+        grugFieldNode2.put("type", GrugFieldType.STRING.name());
+        grugFieldNode2.put("size", 50);
+        fieldsArray.add(grugFieldNode2);
         createNode.set("fields", fieldsArray);
 
         String createResponse = sendAndReceive(createNode);
@@ -92,9 +98,13 @@ class APITest {
         ObjectNode writeNode = createActionNode("write", "testBucket");
         ObjectNode fieldValues = MAPPER.createObjectNode();
         fieldValues.put("testField", 42);
+        fieldValues.put("testString", "balls");
         writeNode.set("fieldValues", fieldValues);
 
         String writeResponse = sendAndReceive(writeNode);
+        assertNotNull(writeResponse, "Write action response should not be null");
+
+        writeResponse = sendAndReceive(writeNode);
         assertNotNull(writeResponse, "Write action response should not be null");
 
         // Read from bucket

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.tatuaua.grugtsdb.model.CreateBucketAction;
 import org.tatuaua.grugtsdb.model.GrugActionType;
+import org.tatuaua.grugtsdb.model.ReadAction;
 import org.tatuaua.grugtsdb.model.WriteAction;
 
 import java.io.IOException;
@@ -49,7 +50,7 @@ public class UDPServer {
                         CreateBucketAction createBucketAction = MAPPER.readValue(received, CreateBucketAction.class);
 
                         try {
-                            IO.createBucket(createBucketAction.getBucketName(), createBucketAction.getFields());
+                            DB.createBucket(createBucketAction.getBucketName(), createBucketAction.getFields());
                             response = "Created bucket";
                         } catch (IOException e) {
                             response = "Error";
@@ -59,14 +60,17 @@ public class UDPServer {
                         WriteAction writeAction = MAPPER.readValue(received, WriteAction.class);
 
                         try {
-                            IO.writeToBucket(rootNode.get("bucketName").asText(), writeAction.getFieldValues());
+                            DB.writeToBucket(rootNode.get("bucketName").asText(), writeAction.getFieldValues());
                             response = "Wrote to bucket";
                         } catch (IOException e) {
                             response = "Error";
                         }
                         break;
                     case READ:
-                        response = IO.readBucketCombined(rootNode.get("bucketName").asText());
+
+                        ReadAction readAction = MAPPER.readValue(received, ReadAction.class); // will include more options later
+                        response = MAPPER.writerWithDefaultPrettyPrinter()
+                                .writeValueAsString(DB.readFullBucket(rootNode.get("bucketName").asText()));
                         break;
                     default:
                         response = "Error";
