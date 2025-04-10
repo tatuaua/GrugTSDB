@@ -1,7 +1,0 @@
-{
-  "fields" : [ {
-    "name" : "testField",
-    "type" : "INT",
-    "size" : 0
-  } ]
-}
