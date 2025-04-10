@@ -6,7 +6,7 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class CreateBucketAction implements Action {
+public class CreateBucketAction {
 
     @JsonIgnore
     GrugActionType actionType;
