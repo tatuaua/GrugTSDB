@@ -6,7 +6,7 @@ import lombok.Data;
 import java.util.Map;
 
 @Data
-public class WriteAction {
+public class WriteAction implements Action {
 
     @JsonIgnore
     GrugActionType actionType;

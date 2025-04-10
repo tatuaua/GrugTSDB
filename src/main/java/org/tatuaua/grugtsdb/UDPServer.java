@@ -2,6 +2,8 @@ package org.tatuaua.grugtsdb;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.tatuaua.grugtsdb.model.CreateBucketAction;
+import org.tatuaua.grugtsdb.model.GrugActionType;
 import org.tatuaua.grugtsdb.model.WriteAction;
 
 import java.io.IOException;
@@ -34,20 +36,41 @@ public class UDPServer {
                 System.out.println("Received from " + packet.getAddress().getHostAddress() +
                         ":" + packet.getPort() + ": " + received);
 
-                String response = "";
-
                 JsonNode rootNode = MAPPER.readTree(received);
 
-                if(rootNode.get("actionType").asText().equals("write")) {
-                    WriteAction action = MAPPER.readValue(received, WriteAction.class);
+                String actionTypeStr = rootNode.get("actionType").asText();
 
-                    try {
-                        IO.writeToBucket(rootNode.get("bucketName").asText(), action.getFieldValues());
-                    } catch (IOException e) {
+                GrugActionType actionType = GrugActionType.fromString(actionTypeStr); // TODO handle error
+
+                String response;
+
+                switch(actionType) {
+                    case CREATE_BUCKET:
+                        CreateBucketAction createBucketAction = MAPPER.readValue(received, CreateBucketAction.class);
+
+                        try {
+                            IO.createBucket(createBucketAction.getBucketName(), createBucketAction.getFields());
+                            response = "Created bucket";
+                        } catch (IOException e) {
+                            response = "Error";
+                        }
+                        break;
+                    case WRITE:
+                        WriteAction writeAction = MAPPER.readValue(received, WriteAction.class);
+
+                        try {
+                            IO.writeToBucket(rootNode.get("bucketName").asText(), writeAction.getFieldValues());
+                            response = "Wrote to bucket";
+                        } catch (IOException e) {
+                            response = "Error";
+                        }
+                        break;
+                    case READ:
+                        response = IO.readBucketCombined(rootNode.get("bucketName").asText());
+                        break;
+                    default:
                         response = "Error";
-                    }
-                } else if(rootNode.get("actionType").asText().equals("createBucket")) {
-
+                        break;
                 }
 
                 byte[] responseBytes = response.getBytes();
@@ -58,19 +81,22 @@ public class UDPServer {
                         packet.getPort()
                 );
                 socket.send(responsePacket);
-
-                System.out.println("Sent: " + response);
             }
         } catch (SocketException e) {
             System.err.println("Failed to create socket: " + e.getMessage());
         } catch (IOException e) {
             System.err.println("Error: " + e.getMessage());
-        } finally {
-            if (socket != null && !socket.isClosed()) {
-                socket.close();
-            }
-            System.out.println("Server stopped");
         }
+    }
+
+    public void close() {
+        if(socket != null && !socket.isClosed()) {
+            socket.close();
+        }
+    }
+
+    public boolean isClosed() {
+        return socket.isClosed();
     }
 
     public static void main(String[] args) {

@@ -89,22 +89,18 @@ public class IO {
         }
     }
 
-    public static void readBucketCombined(String bucketName) throws IOException {
+    public static String readBucketCombined(String bucketName) throws IOException {
+        StringBuilder b = new StringBuilder();
         File bucketFile = new File(DIR, bucketName + ".grug");
         try (DataInputStream dis = new DataInputStream(new FileInputStream(bucketFile))) {
             int intValue = dis.readInt();
-            System.out.println("Integer value: " + intValue);
-
-            boolean boolValue = dis.readBoolean();
-            System.out.println("Boolean value: " + boolValue);
-
-            String stringValue = Utils.byteArray256ToString(dis.readNBytes(256));
-            System.out.println("String value: " + stringValue);
-
-            float floatValue = dis.readFloat();
-            System.out.println("Float value: " + floatValue);
+            boolean boolValue = false; //dis.readBoolean();
+            String stringValue = ""; //Utils.byteArray256ToString(dis.readNBytes(256));
+            float floatValue = 0.0f; //dis.readFloat();
+            return "int: " + intValue + "\nbool: " + boolValue + "\nstring: " + stringValue + "\nfloat: " + floatValue;
         } catch (IOException e) {
-            throw new IOException("Error reading bucket '" + bucketName + "': " + e.getMessage(), e);
+            e.printStackTrace();
+            throw new IOException("Error reading bucket '" + bucketName + "': ");
         }
     }
 }

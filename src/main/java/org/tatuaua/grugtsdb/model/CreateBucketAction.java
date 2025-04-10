@@ -1,11 +1,12 @@
 package org.tatuaua.grugtsdb.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import lombok.Data;
 
 import java.util.List;
-import java.util.Map;
 
-public class CreateBucketAction {
+@Data
+public class CreateBucketAction implements Action {
 
     @JsonIgnore
     GrugActionType actionType;
