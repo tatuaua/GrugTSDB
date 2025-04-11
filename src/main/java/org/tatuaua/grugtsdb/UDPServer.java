@@ -4,23 +4,29 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.tatuaua.grugtsdb.model.CreateBucketAction;
 import org.tatuaua.grugtsdb.model.GrugActionType;
-import org.tatuaua.grugtsdb.model.ReadAction;
 import org.tatuaua.grugtsdb.model.WriteAction;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.SocketException;
+import java.util.Map;
 
 public class UDPServer {
     private final int port;
-    private final int bufferSize;
+    private final int bufferSize = 1024;
     private DatagramSocket socket;
+    byte[] buffer = new byte[bufferSize];
+    DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
     private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final Map<GrugActionType, String> responseMessages = Map.of(
+            GrugActionType.CREATE_BUCKET, "Created bucket",
+            GrugActionType.WRITE, "Wrote to bucket",
+            GrugActionType.READ, "Read from bucket"
+    );
 
-    public UDPServer(int port, int bufferSize) {
+    public UDPServer(int port) {
         this.port = port;
-        this.bufferSize = bufferSize;
     }
 
     public void start() {
@@ -29,66 +35,64 @@ public class UDPServer {
             System.out.println("UDP Server started on port " + port);
 
             while (true) {
-                byte[] buffer = new byte[bufferSize];
-                DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
                 socket.receive(packet);
 
-                String received = new String(packet.getData(), 0, packet.getLength()).trim();
+                //String received = new String(packet.getData(), 0, packet.getLength()).trim();
 
-                JsonNode rootNode = MAPPER.readTree(received);
+                JsonNode rootNode = MAPPER.readTree(packet.getData(), 0, packet.getLength());//MAPPER.readTree(received);
 
                 String actionTypeStr = rootNode.get("actionType").asText();
 
                 GrugActionType actionType = GrugActionType.fromString(actionTypeStr); // TODO handle error
 
-                String response = "";
-
                 switch(actionType) {
                     case CREATE_BUCKET:
-                        CreateBucketAction createBucketAction = MAPPER.readValue(received, CreateBucketAction.class);
-
+                        //CreateBucketAction createBucketAction = MAPPER.readValue(received, CreateBucketAction.class);
+                        CreateBucketAction createBucketAction = MAPPER.readValue(packet.getData(), 0, packet.getLength(), CreateBucketAction.class);
                         try {
                             DB.createBucket(createBucketAction.getBucketName(), createBucketAction.getFields());
-                            response = "Created bucket";
+                            sendResponse(socket, packet, responseMessages.get(GrugActionType.CREATE_BUCKET));
                         } catch (IOException e) {
-                            response = "Error";
+                            sendResponse(socket, packet, "Error creating bucket: " + e.getMessage());
                         }
                         break;
                     case WRITE:
-                        WriteAction writeAction = MAPPER.readValue(received, WriteAction.class);
-
+                        //WriteAction writeAction = MAPPER.readValue(received, WriteAction.class);
+                        WriteAction writeAction = MAPPER.readValue(packet.getData(), 0, packet.getLength(), WriteAction.class);
                         try {
                             DB.writeToBucket(rootNode.get("bucketName").asText(), writeAction.getFieldValues());
-                            response = "Wrote to bucket";
+                            sendResponse(socket, packet, responseMessages.get(GrugActionType.WRITE));
                         } catch (IOException e) {
-                            response = "Error";
+                            sendResponse(socket, packet, "Error writing to bucket: " + e.getMessage());
                         }
                         break;
                     case READ:
 
-                        ReadAction readAction = MAPPER.readValue(received, ReadAction.class); // will include more options later
-                        MAPPER.writerWithDefaultPrettyPrinter()
-                                .writeValueAsString(DB.readFullBucket(rootNode.get("bucketName").asText()));
+                        //ReadAction readAction = MAPPER.readValue(received, ReadAction.class); // will include more options later
+                        sendResponse(socket, packet, MAPPER.writerWithDefaultPrettyPrinter()
+                                .writeValueAsString(DB.readFromBucket(rootNode.get("bucketName").asText())));
                         break;
                     default:
-                        response = "Error";
+                        sendResponse(socket, packet, "Unknown action type: " + actionTypeStr);
                         break;
                 }
-
-                byte[] responseBytes = response.getBytes();
-                DatagramPacket responsePacket = new DatagramPacket(
-                        responseBytes,
-                        responseBytes.length,
-                        packet.getAddress(),
-                        packet.getPort()
-                );
-                socket.send(responsePacket);
             }
         } catch (SocketException e) {
             System.err.println("Failed to create socket: " + e.getMessage());
         } catch (IOException e) {
             System.err.println("Error: " + e.getMessage());
         }
+    }
+
+    public void sendResponse(DatagramSocket socket, DatagramPacket packet, String response) throws IOException {
+        byte[] responseBytes = response.getBytes();
+        DatagramPacket responsePacket = new DatagramPacket(
+                responseBytes,
+                responseBytes.length,
+                packet.getAddress(),
+                packet.getPort()
+        );
+        socket.send(responsePacket);
     }
 
     public void close() {

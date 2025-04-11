@@ -1,12 +1,13 @@
 package org.tatuaua.grugtsdb.model;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
 
 import java.util.Map;
 import java.util.List;
 
 @Data
+@AllArgsConstructor
 public class GrugReadResponse {
-    int count;
-    List<Map<String, Object>> data;
+    Map<String, Object> data;
 }

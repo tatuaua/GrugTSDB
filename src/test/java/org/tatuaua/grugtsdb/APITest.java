@@ -3,7 +3,6 @@ package org.tatuaua.grugtsdb;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.tatuaua.grugtsdb.model.GrugFieldType;
@@ -12,7 +11,6 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -29,7 +27,7 @@ class APITest {
 
     @BeforeEach
     void setUp() throws IOException {
-        server = new UDPServer(PORT, BUFFER_SIZE);
+        server = new UDPServer(PORT);
         executor = Executors.newSingleThreadExecutor();
         executor.submit(() -> server.start());
 

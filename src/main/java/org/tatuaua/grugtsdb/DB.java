@@ -3,14 +3,12 @@ package org.tatuaua.grugtsdb;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.tatuaua.grugtsdb.model.GrugBucketMetadata;
 import org.tatuaua.grugtsdb.model.GrugField;
-import org.tatuaua.grugtsdb.model.GrugFieldType;
 
 import org.apache.commons.io.FileUtils;
 import org.tatuaua.grugtsdb.model.GrugReadResponse;
 
 import java.io.*;
 import java.nio.file.Files;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,7 +16,7 @@ import java.util.Map;
 public class DB {
     private static final File DIR = new File("grug_tsdb");
     private static final ObjectMapper MAPPER = new ObjectMapper();
-    private static final Map<String, DataOutputStream> BUCKET_STREAMS = new HashMap<>();
+    private static final Map<String, GrugBucketMetadata> BUCKET_METADATA_MAP = new HashMap<>();
 
     static {
         try {
@@ -37,14 +35,20 @@ public class DB {
             throw new IOException("Bucket '" + bucketName + "' already exists");
         }
 
-        GrugBucketMetadata metadata = new GrugBucketMetadata();
-        metadata.setFields(fields);
-        createBucketMetadata(bucketName, metadata);
+        DataOutputStream dos = new DataOutputStream(
+                new BufferedOutputStream(
+                        new FileOutputStream(bucketFile, true), 8192 // 8KB buffer
+                )
+        );
 
-        BUCKET_STREAMS.put(bucketName, new DataOutputStream(new FileOutputStream(bucketFile, true)));
+        GrugBucketMetadata metadata = new GrugBucketMetadata(dos, fields);
+        metadata.setFields(fields);
+        writeBucketMetadata(bucketName, metadata);
+
+        BUCKET_METADATA_MAP.put(bucketName, metadata);
     }
 
-    private static void createBucketMetadata(String bucketName, GrugBucketMetadata metadata) throws IOException {
+    private static void writeBucketMetadata(String bucketName, GrugBucketMetadata metadata) throws IOException {
         File metadataFile = new File(DIR, bucketName + "_meta.json");
         if (!metadataFile.createNewFile()) {
             throw new IOException("Metadata for bucket '" + bucketName + "' already exists");
@@ -56,16 +60,9 @@ public class DB {
         }
     }
 
-    public static GrugBucketMetadata readBucketMetadata(String bucketName) throws IOException {
-        File metadataFile = new File(DIR, bucketName + "_meta.json");
-        try (InputStreamReader reader = new InputStreamReader(new FileInputStream(metadataFile))) {
-            return MAPPER.readValue(reader, GrugBucketMetadata.class);
-        }
-    }
-
     public static void writeToBucket(String bucketName, Map<String, Object> fieldValues) throws IOException {
-        GrugBucketMetadata metadata = readBucketMetadata(bucketName);
-        DataOutputStream dos = BUCKET_STREAMS.get(bucketName);
+        GrugBucketMetadata metadata = BUCKET_METADATA_MAP.get(bucketName);
+        DataOutputStream dos = BUCKET_METADATA_MAP.get(bucketName).getDos();
 
         for (GrugField field : metadata.getFields()) {
             Object value = fieldValues.get(field.getName());
@@ -94,34 +91,65 @@ public class DB {
         dos.flush();
     }
 
-    public static GrugReadResponse readFullBucket(String bucketName) throws IOException {
-        GrugBucketMetadata metadata = readBucketMetadata(bucketName);
+    public static GrugReadResponse readFromBucket(String bucketName) throws IOException {
+        GrugBucketMetadata metadata = BUCKET_METADATA_MAP.get(bucketName);
         List<GrugField> fields = metadata.getFields();
-        List<Map<String, Object>> data = new ArrayList<>();
-        File bucketFile = new File(DIR, bucketName + ".grug");
-        try (DataInputStream dis = new DataInputStream(new FileInputStream(bucketFile))) {
-            while (dis.available() > 0) {
-                Map<String, Object> record = new HashMap<>();
-                for (GrugField field : fields) {
-                    if (field.getType() == GrugFieldType.INT) {
-                        record.put(field.getName(), dis.readInt());
-                    } else if (field.getType() == GrugFieldType.BOOLEAN) {
-                        record.put(field.getName(), dis.readBoolean());
-                    } else if (field.getType() == GrugFieldType.FLOAT) {
-                        record.put(field.getName(), dis.readFloat());
-                    } else if (field.getType() == GrugFieldType.STRING) {
-                        record.put(field.getName(), Utils.byteArrayToString(dis.readNBytes(field.getSize())));
-                    }
-                }
-                data.add(record);
+
+        int recordSize = 0;
+        for (GrugField field : fields) {
+            switch (field.getType()) {
+                case INT:
+                    recordSize += 4; // 4 bytes for int
+                    break;
+                case BOOLEAN:
+                    recordSize += 1; // 1 byte for boolean
+                    break;
+                case FLOAT:
+                    recordSize += 4; // 4 bytes for float
+                    break;
+                case STRING:
+                    recordSize += field.getSize(); // Fixed size for string
+                    break;
+                default:
+                    throw new IOException("Unsupported field type: " + field.getType());
             }
-        } catch (IOException e) {
-            e.printStackTrace();
-            throw new IOException("Error reading bucket '" + bucketName + "': ");
         }
-        GrugReadResponse response = new GrugReadResponse();
-        response.setCount(data.size());
-        response.setData(data);
-        return response;
+
+        File bucketFile = new File(DIR, bucketName + ".grug");
+        if (!bucketFile.exists() || bucketFile.length() == 0) {
+            return null;
+        }
+
+        try (RandomAccessFile raf = new RandomAccessFile(bucketFile, "r")) {
+            long fileLength = raf.length();
+            if (fileLength < recordSize) {
+                throw new IOException("File is too small to contain a complete record");
+            }
+
+            raf.seek(fileLength - recordSize);
+
+            Map<String, Object> record = new HashMap<>();
+            for (GrugField field : fields) {
+                switch (field.getType()) {
+                    case INT:
+                        record.put(field.getName(), raf.readInt());
+                        break;
+                    case BOOLEAN:
+                        record.put(field.getName(), raf.readBoolean());
+                        break;
+                    case FLOAT:
+                        record.put(field.getName(), raf.readFloat());
+                        break;
+                    case STRING:
+                        byte[] stringBytes = new byte[field.getSize()];
+                        raf.readFully(stringBytes);
+                        record.put(field.getName(), Utils.byteArrayToString(stringBytes));
+                        break;
+                    default:
+                        throw new IOException("Unsupported field type: " + field.getType());
+                }
+            }
+            return new GrugReadResponse(record);
+        }
     }
 }
