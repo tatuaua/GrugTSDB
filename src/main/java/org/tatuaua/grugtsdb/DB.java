@@ -18,6 +18,7 @@ import java.util.Map;
 public class DB {
     private static final File DIR = new File("grug_tsdb");
     private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final Map<String, DataOutputStream> BUCKET_STREAMS = new HashMap<>();
 
     static {
         try {
@@ -39,6 +40,8 @@ public class DB {
         GrugBucketMetadata metadata = new GrugBucketMetadata();
         metadata.setFields(fields);
         createBucketMetadata(bucketName, metadata);
+
+        BUCKET_STREAMS.put(bucketName, new DataOutputStream(new FileOutputStream(bucketFile, true)));
     }
 
     private static void createBucketMetadata(String bucketName, GrugBucketMetadata metadata) throws IOException {
@@ -62,33 +65,33 @@ public class DB {
 
     public static void writeToBucket(String bucketName, Map<String, Object> fieldValues) throws IOException {
         GrugBucketMetadata metadata = readBucketMetadata(bucketName);
-        File bucketFile = new File(DIR, bucketName + ".grug");
+        DataOutputStream dos = BUCKET_STREAMS.get(bucketName);
 
-        try (DataOutputStream dos = new DataOutputStream(new FileOutputStream(bucketFile, true))) {
-            for (GrugField field : metadata.getFields()) {
-                Object value = fieldValues.get(field.getName());
-                if (value == null) {
-                    throw new IOException("Missing required field: " + field.getName());
-                }
+        for (GrugField field : metadata.getFields()) {
+            Object value = fieldValues.get(field.getName());
+            if (value == null) {
+                throw new IOException("Missing required field: " + field.getName());
+            }
 
-                switch (field.getType()) {
-                    case INT:
-                        dos.writeInt((int) value);
-                        break;
-                    case BOOLEAN:
-                        dos.writeBoolean((boolean) value);
-                        break;
-                    case FLOAT:
-                        dos.writeFloat((float) value);
-                        break;
-                    case STRING:
-                        dos.writeBytes(new String(Utils.stringToByteArray((String) value, field.getSize())));
-                        break;
-                    default:
-                        throw new IOException("Unsupported field type: " + field.getType());
-                }
+            switch (field.getType()) {
+                case INT:
+                    dos.writeInt((int) value);
+                    break;
+                case BOOLEAN:
+                    dos.writeBoolean((boolean) value);
+                    break;
+                case FLOAT:
+                    dos.writeFloat((float) value);
+                    break;
+                case STRING:
+                    dos.writeBytes(new String(Utils.stringToByteArray((String) value, field.getSize())));
+                    break;
+                default:
+                    throw new IOException("Unsupported field type: " + field.getType());
             }
         }
+
+        dos.flush();
     }
 
     public static GrugReadResponse readFullBucket(String bucketName) throws IOException {

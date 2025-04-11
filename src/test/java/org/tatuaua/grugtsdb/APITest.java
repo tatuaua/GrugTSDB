@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -73,6 +74,8 @@ class APITest {
         return jsonNode;
     }
 
+
+
     @Test
     void testBucketLifecycle() throws IOException {
         // Create bucket
@@ -101,17 +104,22 @@ class APITest {
         fieldValues.put("testString", "balls");
         writeNode.set("fieldValues", fieldValues);
 
-        String writeResponse = sendAndReceive(writeNode);
-        assertNotNull(writeResponse, "Write action response should not be null");
+        long start = System.currentTimeMillis();
+        for(int i = 0; i < 10000; i++) {
+            String writeResponse = sendAndReceive(writeNode);
+            assertNotNull(writeResponse, "Write action response should not be null");
+        }
+        long end = System.currentTimeMillis();
+        System.out.println("Upload took: " + (end-start));
 
-        writeResponse = sendAndReceive(writeNode);
-        assertNotNull(writeResponse, "Write action response should not be null");
-
+        start = System.currentTimeMillis();
         // Read from bucket
         ObjectNode readNode = createActionNode("read", "testBucket");
 
         String readResponse = sendAndReceive(readNode);
         assertNotNull(readResponse, "Read action response should not be null");
-        System.out.println("Read result: " + readResponse);
+
+        end = System.currentTimeMillis();
+        System.out.println("Read took: " + (end-start));
     }
 }

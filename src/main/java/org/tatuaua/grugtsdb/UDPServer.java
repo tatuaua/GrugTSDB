@@ -34,8 +34,6 @@ public class UDPServer {
                 socket.receive(packet);
 
                 String received = new String(packet.getData(), 0, packet.getLength()).trim();
-                System.out.println("Received from " + packet.getAddress().getHostAddress() +
-                        ":" + packet.getPort() + ": " + received);
 
                 JsonNode rootNode = MAPPER.readTree(received);
 
@@ -43,7 +41,7 @@ public class UDPServer {
 
                 GrugActionType actionType = GrugActionType.fromString(actionTypeStr); // TODO handle error
 
-                String response;
+                String response = "";
 
                 switch(actionType) {
                     case CREATE_BUCKET:
@@ -69,7 +67,7 @@ public class UDPServer {
                     case READ:
 
                         ReadAction readAction = MAPPER.readValue(received, ReadAction.class); // will include more options later
-                        response = MAPPER.writerWithDefaultPrettyPrinter()
+                        MAPPER.writerWithDefaultPrettyPrinter()
                                 .writeValueAsString(DB.readFullBucket(rootNode.get("bucketName").asText()));
                         break;
                     default:
@@ -101,12 +99,5 @@ public class UDPServer {
 
     public boolean isClosed() {
         return socket.isClosed();
-    }
-
-    public static void main(String[] args) {
-        int port = 12345;
-        int bufferSize = 1024;
-        UDPServer server = new UDPServer(port, bufferSize);
-        server.start();
     }
 }
