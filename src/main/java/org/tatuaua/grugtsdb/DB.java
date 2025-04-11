@@ -62,7 +62,7 @@ public class DB {
 
     public static void writeToBucket(String bucketName, Map<String, Object> fieldValues) throws IOException {
         GrugBucketMetadata metadata = BUCKET_METADATA_MAP.get(bucketName);
-        DataOutputStream dos = BUCKET_METADATA_MAP.get(bucketName).getDos();
+        DataOutputStream dos = metadata.getDos();
 
         for (GrugField field : metadata.getFields()) {
             Object value = fieldValues.get(field.getName());
@@ -81,14 +81,12 @@ public class DB {
                     dos.writeFloat((float) value);
                     break;
                 case STRING:
-                    dos.writeBytes(new String(Utils.stringToByteArray((String) value, field.getSize())));
+                    dos.write(Utils.stringToByteArray((String) value, field.getSize()));
                     break;
                 default:
                     throw new IOException("Unsupported field type: " + field.getType());
             }
         }
-
-        dos.flush();
     }
 
     public static GrugReadResponse readFromBucket(String bucketName) throws IOException {
