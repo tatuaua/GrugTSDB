@@ -93,6 +93,10 @@ public class DB {
         GrugBucketMetadata metadata = BUCKET_METADATA_MAP.get(bucketName);
         List<GrugField> fields = metadata.getFields();
 
+        if (metadata.getRecordAmount() < 1) {
+            throw new IOException("Tried to read empty bucket");
+        }
+
         long lastRecordPosition = (metadata.getRecordAmount() - 1) * metadata.getRecordSize();
 
         metadata.getRaf().seek(lastRecordPosition);
@@ -118,7 +122,7 @@ public class DB {
                     throw new IOException("Unsupported field type: " + field.getType());
             }
         }
-        metadata.getRaf().seek(0);
+        metadata.getRaf().seek(0); // resets the raf pointer to start of file
         return new GrugReadResponse(record);
     }
 
