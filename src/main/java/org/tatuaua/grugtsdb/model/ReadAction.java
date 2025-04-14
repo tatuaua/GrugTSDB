@@ -9,6 +9,7 @@ public class ReadAction {
     @JsonIgnore
     GrugActionType actionType;
 
-    @JsonIgnore
     String bucketName;
+
+    GrugReadType type;
 }

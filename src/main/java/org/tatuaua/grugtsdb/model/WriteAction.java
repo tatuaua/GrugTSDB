@@ -11,7 +11,6 @@ public class WriteAction {
     @JsonIgnore
     GrugActionType actionType;
 
-    @JsonIgnore
     String bucketName;
 
     Map<String, Object> fieldValues;

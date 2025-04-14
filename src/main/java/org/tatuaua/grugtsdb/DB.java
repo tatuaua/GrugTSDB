@@ -9,6 +9,7 @@ import org.tatuaua.grugtsdb.model.GrugReadResponse;
 
 import java.io.*;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -124,6 +125,51 @@ public class DB {
         }
         metadata.getRaf().seek(0); // resets the raf pointer to start of file
         return new GrugReadResponse(record);
+    }
+
+    public static List<GrugReadResponse> readAll(String bucketName) throws IOException {
+        GrugBucketMetadata metadata = BUCKET_METADATA_MAP.get(bucketName);
+        List<GrugField> fields = metadata.getFields();
+
+        if (metadata.getRecordAmount() < 1) {
+            throw new IOException("Tried to read empty bucket");
+        }
+
+        long position = 0;
+        int index = 0;
+        metadata.getRaf().seek(position); // make sure we start at beginning of file
+        List<GrugReadResponse> responses = new ArrayList<>();
+
+        while(position < metadata.getRecordSize() * metadata.getRecordAmount()) {
+            GrugReadResponse response = new GrugReadResponse(new HashMap<>());
+            responses.add(index, response);
+
+            for (GrugField field : fields) {
+                switch (field.getType()) {
+                    case INT:
+                        response.getData().put(field.getName(), metadata.getRaf().readInt());
+                        break;
+                    case BOOLEAN:
+                        response.getData().put(field.getName(), metadata.getRaf().readBoolean());
+                        break;
+                    case FLOAT:
+                        response.getData().put(field.getName(), metadata.getRaf().readFloat());
+                        break;
+                    case STRING:
+                        byte[] buffer = new byte[field.getSize()];
+                        metadata.getRaf().readFully(buffer);
+                        response.getData().put(field.getName(), Utils.byteArrayToString(buffer));
+                        break;
+                    default:
+                        throw new IOException("Unsupported field type: " + field.getType());
+                }
+            }
+            position += metadata.getRecordSize();
+            index++;
+        }
+
+        metadata.getRaf().seek(0); // resets the raf pointer to start of file
+        return responses;
     }
 
     /*public static void printBucketContents(String bucketName) throws IOException {

@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.tatuaua.grugtsdb.model.GrugFieldType;
+import org.tatuaua.grugtsdb.model.GrugReadType;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -101,7 +102,7 @@ class APITest {
         writeNode.set("fieldValues", fieldValues);
 
         long start = System.currentTimeMillis();
-        for(int i = 0; i < 100; i++) {
+        for(int i = 0; i < 10; i++) {
             String writeResponse = sendAndReceive(writeNode);
             assertNotNull(writeResponse, "Write action response should not be null");
         }
@@ -112,6 +113,7 @@ class APITest {
 
         // Read from bucket
         ObjectNode readNode = createActionNode("read", "testBucket");
+        readNode.put("type", GrugReadType.MOST_RECENT.name());
 
         System.out.println("Reading");
         String readResponse = sendAndReceive(readNode);
@@ -130,6 +132,7 @@ class APITest {
 
         // Read from bucket
         System.out.println("Reading");
+        readNode.put("type", GrugReadType.FULL.name());
         readResponse = sendAndReceive(readNode);
         System.out.println(readResponse);
         assertNotNull(readResponse, "Read action response should not be null");

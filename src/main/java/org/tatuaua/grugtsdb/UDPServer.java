@@ -2,9 +2,7 @@ package org.tatuaua.grugtsdb;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.tatuaua.grugtsdb.model.CreateBucketAction;
-import org.tatuaua.grugtsdb.model.GrugActionType;
-import org.tatuaua.grugtsdb.model.WriteAction;
+import org.tatuaua.grugtsdb.model.*;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -49,7 +47,6 @@ public class UDPServer {
 
                 switch(actionType) {
                     case CREATE_BUCKET:
-                        //CreateBucketAction createBucketAction = MAPPER.readValue(received, CreateBucketAction.class);
                         CreateBucketAction createBucketAction = MAPPER.readValue(packet.getData(), 0, packet.getLength(), CreateBucketAction.class);
                         try {
                             DB.createBucket(createBucketAction.getBucketName(), createBucketAction.getFields());
@@ -59,10 +56,9 @@ public class UDPServer {
                         }
                         break;
                     case WRITE:
-                        //WriteAction writeAction = MAPPER.readValue(received, WriteAction.class);
                         WriteAction writeAction = MAPPER.readValue(packet.getData(), 0, packet.getLength(), WriteAction.class);
                         try {
-                            DB.writeToBucket(rootNode.get("bucketName").asText(), writeAction.getFieldValues());
+                            DB.writeToBucket(writeAction.getBucketName(), writeAction.getFieldValues());
                             sendResponse(socket, packet, responseMessages.get(WRITE));
                         } catch (IOException e) {
                             System.out.println("Error writing to bucket: " + e.getMessage());
@@ -70,9 +66,15 @@ public class UDPServer {
                         }
                         break;
                     case READ:
-                        //ReadAction readAction = MAPPER.readValue(received, ReadAction.class); // will include more options later
+                        ReadAction readAction = MAPPER.readValue(packet.getData(), 0, packet.getLength(), ReadAction.class);
                         sendResponse(socket, packet, MAPPER.writerWithDefaultPrettyPrinter()
-                                .writeValueAsString(DB.readMostRecent(rootNode.get("bucketName").asText())));
+                                .writeValueAsString(
+                                        switch (readAction.getType()) {
+                                            case FULL -> DB.readAll(readAction.getBucketName());
+                                            case MOST_RECENT -> DB.readMostRecent(readAction.getBucketName());
+                                        }
+                                )
+                        );
                         break;
                     default:
                         sendResponse(socket, packet, "Unknown action type: " + actionTypeStr);
@@ -81,9 +83,15 @@ public class UDPServer {
             }
         } catch (SocketException e) {
             System.err.println("Failed to create socket: " + e.getMessage());
+            e.printStackTrace();
+            socket.close();
         } catch (IOException e) {
             System.err.println("Error: " + e.getMessage());
             e.printStackTrace();
+            socket.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+            socket.close();
         }
     }
 
