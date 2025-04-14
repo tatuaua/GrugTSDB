@@ -72,7 +72,7 @@ public class UDPServer {
                     case READ:
                         //ReadAction readAction = MAPPER.readValue(received, ReadAction.class); // will include more options later
                         sendResponse(socket, packet, MAPPER.writerWithDefaultPrettyPrinter()
-                                .writeValueAsString(DB.readFromBucket(rootNode.get("bucketName").asText())));
+                                .writeValueAsString(DB.readMostRecent(rootNode.get("bucketName").asText())));
                         break;
                     default:
                         sendResponse(socket, packet, "Unknown action type: " + actionTypeStr);

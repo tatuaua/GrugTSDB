@@ -89,7 +89,7 @@ public class DB {
         metadata.setRecordAmount(metadata.getRecordAmount() + 1);
     }
 
-    public static GrugReadResponse readFromBucket(String bucketName) throws IOException {
+    public static GrugReadResponse readMostRecent(String bucketName) throws IOException {
         GrugBucketMetadata metadata = BUCKET_METADATA_MAP.get(bucketName);
         List<GrugField> fields = metadata.getFields();
 
