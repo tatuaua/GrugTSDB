@@ -12,6 +12,8 @@ import java.net.DatagramSocket;
 import java.net.SocketException;
 import java.util.Map;
 
+import static org.tatuaua.grugtsdb.model.GrugActionType.WRITE;
+
 public class UDPServer {
     private final int port;
     private final int bufferSize = 1024;
@@ -21,7 +23,7 @@ public class UDPServer {
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final Map<GrugActionType, String> responseMessages = Map.of(
             GrugActionType.CREATE_BUCKET, "Created bucket",
-            GrugActionType.WRITE, "Wrote to bucket",
+            WRITE, "Wrote to bucket",
             GrugActionType.READ, "Read from bucket"
     );
 
@@ -61,13 +63,13 @@ public class UDPServer {
                         WriteAction writeAction = MAPPER.readValue(packet.getData(), 0, packet.getLength(), WriteAction.class);
                         try {
                             DB.writeToBucket(rootNode.get("bucketName").asText(), writeAction.getFieldValues());
-                            sendResponse(socket, packet, responseMessages.get(GrugActionType.WRITE));
+                            sendResponse(socket, packet, responseMessages.get(WRITE));
                         } catch (IOException e) {
+                            System.out.println("Error writing to bucket: " + e.getMessage());
                             sendResponse(socket, packet, "Error writing to bucket: " + e.getMessage());
                         }
                         break;
                     case READ:
-
                         //ReadAction readAction = MAPPER.readValue(received, ReadAction.class); // will include more options later
                         sendResponse(socket, packet, MAPPER.writerWithDefaultPrettyPrinter()
                                 .writeValueAsString(DB.readFromBucket(rootNode.get("bucketName").asText())));
@@ -81,6 +83,7 @@ public class UDPServer {
             System.err.println("Failed to create socket: " + e.getMessage());
         } catch (IOException e) {
             System.err.println("Error: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 

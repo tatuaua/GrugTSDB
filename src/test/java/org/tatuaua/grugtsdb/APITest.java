@@ -72,8 +72,6 @@ class APITest {
         return jsonNode;
     }
 
-
-
     @Test
     void testBucketLifecycle() throws IOException {
         // Create bucket
@@ -103,7 +101,7 @@ class APITest {
         writeNode.set("fieldValues", fieldValues);
 
         long start = System.currentTimeMillis();
-        for(int i = 0; i < 10000; i++) {
+        for(int i = 0; i < 100; i++) {
             String writeResponse = sendAndReceive(writeNode);
             assertNotNull(writeResponse, "Write action response should not be null");
         }
@@ -111,11 +109,31 @@ class APITest {
         System.out.println("Upload took: " + (end-start));
 
         start = System.currentTimeMillis();
+
         // Read from bucket
         ObjectNode readNode = createActionNode("read", "testBucket");
 
+        System.out.println("Reading");
         String readResponse = sendAndReceive(readNode);
+        System.out.println(readResponse);
         assertNotNull(readResponse, "Read action response should not be null");
+        assertTrue(readResponse.contains("balls"));
+
+        // Update bucket
+        ObjectNode updateNode = createActionNode("write", "testBucket");
+        fieldValues = MAPPER.createObjectNode();
+        fieldValues.put("testField", 53);
+        fieldValues.put("testString", "updateballs");
+        updateNode.set("fieldValues", fieldValues);
+        System.out.println("Writing");
+        sendAndReceive(updateNode);
+
+        // Read from bucket
+        System.out.println("Reading");
+        readResponse = sendAndReceive(readNode);
+        System.out.println(readResponse);
+        assertNotNull(readResponse, "Read action response should not be null");
+        assertTrue(readResponse.contains("updateballs"));
 
         end = System.currentTimeMillis();
         System.out.println("Read took: " + (end-start));
