@@ -24,7 +24,7 @@ public class UDPServer {
     private static final Map<ActionType, String> responseMessages = Map.of(
             ActionType.CREATE_BUCKET, "Created bucket",
             ActionType.WRITE, "Wrote to bucket",
-            ActionType.STREAM, "Started stream"
+            ActionType.CREATE_STREAM, "Started stream"
     );
     private static final List<Subscriber> subscribers = new ArrayList<>();
 
@@ -58,6 +58,17 @@ public class UDPServer {
                         try {
                             DB.writeToBucket(writeAction.getBucketName(), writeAction.getFieldValues());
                             sendResponse(socket, packet, responseMessages.get(ActionType.WRITE));
+
+                            // TODO: move
+                            for(Subscriber s : subscribers) {
+                                if(s.bucketsToStream.contains(writeAction.getBucketName())) {
+                                    sendResponse(
+                                            socket,
+                                            new DatagramPacket(packet.getData(), packet.getLength(), s.address, s.port),
+                                            MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(writeAction)
+                                    );
+                                }
+                            }
                         } catch (IOException e) {
                             System.out.println("Error writing to bucket: " + e.getMessage());
                             sendResponse(socket, packet, "Error writing to bucket: " + e.getMessage());
@@ -74,9 +85,20 @@ public class UDPServer {
                                 )
                         );
                         break;
-                    case STREAM:
-                        StreamAction streamAction = MAPPER.readValue(packet.getData(), 0, packet.getLength(), StreamAction.class);
-
+                    case CREATE_STREAM:
+                        CreateStreamAction createStreamAction = MAPPER.readValue(packet.getData(), 0, packet.getLength(), CreateStreamAction.class);
+                        subscribers.add(
+                                new Subscriber(
+                                        packet.getAddress(),
+                                        packet.getPort(),
+                                        createStreamAction.getBucketsToStream()
+                                )
+                        );
+                        sendResponse(socket, packet, MAPPER
+                                .writerWithDefaultPrettyPrinter()
+                                .writeValueAsString(responseMessages.get(ActionType.CREATE_STREAM))
+                        );
+                        break;
                     default:
                         ErrorResponse error = new ErrorResponse("Unknown action type: " + actionTypeStr);
                         sendResponse(socket, packet, MAPPER.writeValueAsString(error));

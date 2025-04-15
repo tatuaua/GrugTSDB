@@ -11,5 +11,5 @@ public class ReadAction {
 
     String bucketName;
 
-    ReadType type;
+    ReadActionType type;
 }

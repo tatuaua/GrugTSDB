@@ -1,12 +1,13 @@
 package org.tatuaua.grugtsdb;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.tatuaua.grugtsdb.model.FieldType;
-import org.tatuaua.grugtsdb.model.ReadType;
+import org.tatuaua.grugtsdb.model.ReadActionType;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -97,6 +98,7 @@ class APITest {
         fieldsArray.add(grugFieldNode2);
         createNode.set("fields", fieldsArray);
 
+        System.out.println("Creating bucket");
         String createResponse = sendAndReceive(createNode);
         assertNotNull(createResponse, "Create bucket response should not be null");
 
@@ -107,25 +109,37 @@ class APITest {
         fieldValues.put("testString", "balls");
         writeNode.set("fieldValues", fieldValues);
 
+        int amount = 1000;
+        System.out.println("Writing " + amount + " records");
         long start = System.currentTimeMillis();
-        for(int i = 0; i < 1000; i++) {
+        for(int i = 0; i < amount; i++) {
             String writeResponse = sendAndReceive(writeNode);
             assertNotNull(writeResponse, "Write action response should not be null");
         }
         long end = System.currentTimeMillis();
-        System.out.println("Upload took: " + (end-start));
+        System.out.println("Write took: " + (end-start));
 
         start = System.currentTimeMillis();
 
         // Read from bucket
         ObjectNode readNode = createActionNode("read", "testBucket");
-        readNode.put("type", ReadType.MOST_RECENT.name());
+        readNode.put("type", ReadActionType.MOST_RECENT.name());
 
-        System.out.println("Reading");
+        System.out.println("Reading most recent record");
         String readResponse = sendAndReceive(readNode);
         System.out.println(readResponse);
         assertNotNull(readResponse, "Read action response should not be null");
         assertTrue(readResponse.contains("balls"));
+
+        // Create stream
+        System.out.println("Creating stream for testBucket");
+        ObjectNode streamNode = createActionNode("createStream", "testBucket");
+        ArrayNode bucketsNode = MAPPER.createArrayNode();
+        bucketsNode.add("testBucket");
+        streamNode.put("bucketsToStream", bucketsNode);
+        String streamResponse = sendAndReceive(streamNode);
+        assertNotNull(streamResponse, "Stream response should not be null");
+        assertTrue(streamResponse.contains("Started stream"));
 
         // Update bucket
         ObjectNode updateNode = createActionNode("write", "testBucket");
@@ -133,12 +147,21 @@ class APITest {
         fieldValues.put("testField", 53);
         fieldValues.put("testString", "updateballs");
         updateNode.set("fieldValues", fieldValues);
-        System.out.println("Writing");
-        sendAndReceive(updateNode);
+        System.out.println("Writing one record");
+        String updateResponse = sendAndReceive(updateNode);
+        assertNotNull(updateResponse);
+
+        byte[] receiveData = new byte[BUFFER_SIZE];
+        DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
+        System.out.println("Receiving one value from stream");
+        clientSocket.receive(receivePacket);
+        String streamValue = new String(receivePacket.getData(), 0, receivePacket.getLength());
+        assertTrue(streamValue.contains("updateballs"));
+        System.out.println("Received from stream: " + streamValue);
 
         // Read from bucket
         System.out.println("Reading");
-        readNode.put("type", ReadType.FULL.name());
+        readNode.put("type", ReadActionType.FULL.name());
         readResponse = sendAndReceive(readNode);
         System.out.println(readResponse);
         assertNotNull(readResponse, "Read action response should not be null");

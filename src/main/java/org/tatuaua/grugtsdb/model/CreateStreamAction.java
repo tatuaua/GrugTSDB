@@ -1,11 +1,12 @@
 package org.tatuaua.grugtsdb.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.databind.annotation.JsonValueInstantiator;
+import lombok.Data;
 
 import java.util.List;
 
-public class StreamAction {
+@Data
+public class CreateStreamAction {
 
     @JsonIgnore
     ActionType actionType;
@@ -13,6 +14,4 @@ public class StreamAction {
     String bucketName;
 
     List<String> bucketsToStream;
-
-    List<String> bucketsToFilter;
 }

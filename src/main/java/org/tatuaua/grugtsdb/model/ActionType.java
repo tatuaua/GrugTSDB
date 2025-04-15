@@ -4,7 +4,7 @@ public enum ActionType {
     CREATE_BUCKET,
     WRITE,
     READ,
-    STREAM;
+    CREATE_STREAM;
 
     public static ActionType fromString(String value) {
         if (value == null) {
@@ -14,7 +14,7 @@ public enum ActionType {
             case "createBucket" -> CREATE_BUCKET;
             case "write" -> WRITE;
             case "read" -> READ;
-            case "stream" -> STREAM;
+            case "createStream" -> CREATE_STREAM;
             default -> throw new IllegalArgumentException("Invalid action type");
         };
     }

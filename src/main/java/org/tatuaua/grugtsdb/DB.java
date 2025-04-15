@@ -46,7 +46,6 @@ public class DB {
 
         BucketMetadata metadata = new BucketMetadata(dos, raf, calculateRecordSize(fields), 0, fields);
 
-        System.out.println("created bucket with record size: " + metadata.getRecordSize());
         writeBucketMetadata(bucketName, metadata);
         BUCKET_METADATA_MAP.put(bucketName, metadata);
     }
