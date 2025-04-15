@@ -109,18 +109,18 @@ public class UDPServer {
         } catch (JsonProcessingException e) {
             System.err.println("Failed to parse JSON: " + e.getMessage());
             e.printStackTrace();
-            sendResponse(socket, packet, MAPPER.writeValueAsString(new ErrorResponse("Failed to parse JSON: " + e.getMessage())));
+            sendResponse(socket, packet, "Failed to parse JSON: " + e.getMessage());
         } catch (SocketException e) {
             System.err.println("Failed to create or access socket: " + e.getMessage());
             e.printStackTrace();
-            sendResponse(socket, packet, MAPPER.writeValueAsString(new ErrorResponse("Failed to create or access socket: " + e.getMessage())));
+            sendResponse(socket, packet,"Failed to create or access socket: " + e.getMessage());
         } catch (IOException e) {
             System.err.println("IO Exception: " + e.getMessage());
             e.printStackTrace();
-            sendResponse(socket, packet, MAPPER.writeValueAsString(new ErrorResponse("IO Exception: " + e.getMessage())));
+            sendResponse(socket, packet, "IO Exception: " + e.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
-            sendResponse(socket, packet, MAPPER.writeValueAsString(new ErrorResponse("Exception: " + e.getMessage())));
+            sendResponse(socket, packet, "Exception: " + e.getMessage());
         }
     }
 
