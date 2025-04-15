@@ -44,7 +44,7 @@ public class DB {
                 bucketFile, "r"
         );
 
-        GrugBucketMetadata metadata = null;//new GrugBucketMetadata(dos, raf, calculateRecordSize(fields), 0, fields);
+        GrugBucketMetadata metadata = new GrugBucketMetadata(dos, raf, calculateRecordSize(fields), 0, fields);
 
         System.out.println("created bucket with record size: " + metadata.getRecordSize());
         writeBucketMetadata(bucketName, metadata);
