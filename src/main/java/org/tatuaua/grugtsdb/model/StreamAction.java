@@ -1,17 +1,18 @@
 package org.tatuaua.grugtsdb.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import lombok.Data;
+import com.fasterxml.jackson.databind.annotation.JsonValueInstantiator;
 
 import java.util.List;
 
-@Data
-public class CreateBucketAction {
+public class StreamAction {
 
     @JsonIgnore
     ActionType actionType;
 
     String bucketName;
 
-    List<Field> fields;
+    List<String> bucketsToStream;
+
+    List<String> bucketsToFilter;
 }

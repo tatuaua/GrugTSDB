@@ -9,7 +9,7 @@ import java.util.Map;
 public class WriteAction {
 
     @JsonIgnore
-    GrugActionType actionType;
+    ActionType actionType;
 
     String bucketName;
 

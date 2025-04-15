@@ -7,6 +7,6 @@ import java.util.Map;
 
 @Data
 @AllArgsConstructor
-public class GrugReadResponse {
+public class ReadResponse {
     Map<String, Object> data;
 }

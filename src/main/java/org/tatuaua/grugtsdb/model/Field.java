@@ -3,9 +3,9 @@ package org.tatuaua.grugtsdb.model;
 import lombok.Data;
 
 @Data
-public class GrugField {
+public class Field {
     String name;
-    GrugFieldType type;
+    FieldType type;
     int size;
 }
 

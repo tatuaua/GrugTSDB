@@ -1,6 +1,6 @@
 package org.tatuaua.grugtsdb.model;
 
-public enum GrugFieldType {
+public enum FieldType {
     STRING,
     INT,
     FLOAT,

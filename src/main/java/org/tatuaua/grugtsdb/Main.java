@@ -1,7 +1,7 @@
 package org.tatuaua.grugtsdb;
 
-import org.tatuaua.grugtsdb.model.GrugField;
-import org.tatuaua.grugtsdb.model.GrugFieldType;
+import org.tatuaua.grugtsdb.model.Field;
+import org.tatuaua.grugtsdb.model.FieldType;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -12,23 +12,23 @@ import java.util.Map;
 public class Main {
     public static void main(String[] args) throws IOException {
 
-        GrugField field = new GrugField();
+        Field field = new Field();
         field.setName("field_name");
-        field.setType(GrugFieldType.INT);
+        field.setType(FieldType.INT);
 
-        GrugField field2 = new GrugField();
+        Field field2 = new Field();
         field2.setName("other");
-        field2.setType(GrugFieldType.BOOLEAN);
+        field2.setType(FieldType.BOOLEAN);
 
-        GrugField field3 = new GrugField();
+        Field field3 = new Field();
         field3.setName("str");
-        field3.setType(GrugFieldType.STRING);
+        field3.setType(FieldType.STRING);
 
-        GrugField field4 = new GrugField();
+        Field field4 = new Field();
         field4.setName("fl");
-        field4.setType(GrugFieldType.FLOAT);
+        field4.setType(FieldType.FLOAT);
 
-        List<GrugField> fields = new ArrayList<>();
+        List<Field> fields = new ArrayList<>();
         fields.add(field);
         fields.add(field2);
         fields.add(field3);

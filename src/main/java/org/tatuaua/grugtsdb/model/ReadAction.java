@@ -7,9 +7,9 @@ import lombok.Data;
 public class ReadAction {
 
     @JsonIgnore
-    GrugActionType actionType;
+    ActionType actionType;
 
     String bucketName;
 
-    GrugReadType type;
+    ReadType type;
 }

@@ -1,11 +1,12 @@
 package org.tatuaua.grugtsdb.model;
 
-public enum GrugActionType {
+public enum ActionType {
     CREATE_BUCKET,
     WRITE,
-    READ;
+    READ,
+    STREAM;
 
-    public static GrugActionType fromString(String value) {
+    public static ActionType fromString(String value) {
         if (value == null) {
             throw new IllegalArgumentException("Action type cannot be null");
         }
@@ -13,6 +14,7 @@ public enum GrugActionType {
             case "createBucket" -> CREATE_BUCKET;
             case "write" -> WRITE;
             case "read" -> READ;
+            case "stream" -> STREAM;
             default -> throw new IllegalArgumentException("Invalid action type");
         };
     }

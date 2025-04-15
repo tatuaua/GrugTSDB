@@ -10,7 +10,7 @@ import java.util.List;
 
 @Data
 @AllArgsConstructor
-public class GrugBucketMetadata {
+public class BucketMetadata {
 
     @JsonIgnore
     DataOutputStream dos;
@@ -24,5 +24,5 @@ public class GrugBucketMetadata {
     @JsonIgnore
     long recordAmount;
 
-    List<GrugField> fields;
+    List<Field> fields;
 }

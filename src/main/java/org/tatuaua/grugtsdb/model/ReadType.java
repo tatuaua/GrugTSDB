@@ -1,6 +1,6 @@
 package org.tatuaua.grugtsdb.model;
 
-public enum GrugReadType {
+public enum ReadType {
     MOST_RECENT,
     FULL
 }

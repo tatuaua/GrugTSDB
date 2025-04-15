@@ -1,11 +1,11 @@
 package org.tatuaua.grugtsdb;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.tatuaua.grugtsdb.model.GrugBucketMetadata;
-import org.tatuaua.grugtsdb.model.GrugField;
+import org.tatuaua.grugtsdb.model.BucketMetadata;
+import org.tatuaua.grugtsdb.model.Field;
 
 import org.apache.commons.io.FileUtils;
-import org.tatuaua.grugtsdb.model.GrugReadResponse;
+import org.tatuaua.grugtsdb.model.ReadResponse;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -17,7 +17,7 @@ import java.util.Map;
 public class DB {
     private static final File DIR = new File("grug_tsdb");
     private static final ObjectMapper MAPPER = new ObjectMapper();
-    private static final Map<String, GrugBucketMetadata> BUCKET_METADATA_MAP = new HashMap<>();
+    private static final Map<String, BucketMetadata> BUCKET_METADATA_MAP = new HashMap<>();
 
     static {
         try {
@@ -30,7 +30,7 @@ public class DB {
         }
     }
 
-    public static void createBucket(String bucketName, List<GrugField> fields) throws IOException {
+    public static void createBucket(String bucketName, List<Field> fields) throws IOException {
         File bucketFile = new File(DIR, bucketName + ".grug");
         if (!bucketFile.createNewFile()) {
             throw new IOException("Bucket '" + bucketName + "' already exists");
@@ -44,14 +44,14 @@ public class DB {
                 bucketFile, "r"
         );
 
-        GrugBucketMetadata metadata = new GrugBucketMetadata(dos, raf, calculateRecordSize(fields), 0, fields);
+        BucketMetadata metadata = new BucketMetadata(dos, raf, calculateRecordSize(fields), 0, fields);
 
         System.out.println("created bucket with record size: " + metadata.getRecordSize());
         writeBucketMetadata(bucketName, metadata);
         BUCKET_METADATA_MAP.put(bucketName, metadata);
     }
 
-    private static void writeBucketMetadata(String bucketName, GrugBucketMetadata metadata) throws IOException {
+    private static void writeBucketMetadata(String bucketName, BucketMetadata metadata) throws IOException {
         File metadataFile = new File(DIR, bucketName + "_meta.json");
         try (FileOutputStream fos = new FileOutputStream(metadataFile)) {
             String metadataJson = MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(metadata);
@@ -60,10 +60,10 @@ public class DB {
     }
 
     public static void writeToBucket(String bucketName, Map<String, Object> fieldValues) throws IOException {
-        GrugBucketMetadata metadata = BUCKET_METADATA_MAP.get(bucketName);
+        BucketMetadata metadata = BUCKET_METADATA_MAP.get(bucketName);
         DataOutputStream dos = metadata.getDos();
 
-        for (GrugField field : metadata.getFields()) {
+        for (Field field : metadata.getFields()) {
             Object value = fieldValues.get(field.getName());
             if (value == null) {
                 throw new IOException("Missing required field: " + field.getName());
@@ -90,9 +90,9 @@ public class DB {
         metadata.setRecordAmount(metadata.getRecordAmount() + 1);
     }
 
-    public static GrugReadResponse readMostRecent(String bucketName) throws IOException {
-        GrugBucketMetadata metadata = BUCKET_METADATA_MAP.get(bucketName);
-        List<GrugField> fields = metadata.getFields();
+    public static ReadResponse readMostRecent(String bucketName) throws IOException {
+        BucketMetadata metadata = BUCKET_METADATA_MAP.get(bucketName);
+        List<Field> fields = metadata.getFields();
 
         if (metadata.getRecordAmount() < 1) {
             throw new IOException("Tried to read empty bucket");
@@ -103,7 +103,7 @@ public class DB {
         metadata.getRaf().seek(lastRecordPosition);
 
         Map<String, Object> record = new HashMap<>();
-        for (GrugField field : fields) {
+        for (Field field : fields) {
             switch (field.getType()) {
                 case INT:
                     record.put(field.getName(), metadata.getRaf().readInt());
@@ -124,13 +124,13 @@ public class DB {
             }
         }
         metadata.getRaf().seek(0); // resets the raf pointer to start of file
-        return new GrugReadResponse(record);
+        return new ReadResponse(record);
     }
 
     // TODO: pagination
-    public static List<GrugReadResponse> readAll(String bucketName) throws IOException {
-        GrugBucketMetadata metadata = BUCKET_METADATA_MAP.get(bucketName);
-        List<GrugField> fields = metadata.getFields();
+    public static List<ReadResponse> readAll(String bucketName) throws IOException {
+        BucketMetadata metadata = BUCKET_METADATA_MAP.get(bucketName);
+        List<Field> fields = metadata.getFields();
 
         if (metadata.getRecordAmount() < 1) {
             throw new IOException("Tried to read empty bucket");
@@ -139,13 +139,13 @@ public class DB {
         long position = 0;
         int index = 0;
         metadata.getRaf().seek(position); // make sure we start at beginning of file
-        List<GrugReadResponse> responses = new ArrayList<>();
+        List<ReadResponse> responses = new ArrayList<>();
 
         while(position < metadata.getRecordSize() * metadata.getRecordAmount()) {
-            GrugReadResponse response = new GrugReadResponse(new HashMap<>());
+            ReadResponse response = new ReadResponse(new HashMap<>());
             responses.add(index, response);
 
-            for (GrugField field : fields) {
+            for (Field field : fields) {
                 switch (field.getType()) {
                     case INT:
                         response.getData().put(field.getName(), metadata.getRaf().readInt());
@@ -209,9 +209,9 @@ public class DB {
         }
     }*/
 
-    private static long calculateRecordSize(List<GrugField> fields) throws IOException {
+    private static long calculateRecordSize(List<Field> fields) throws IOException {
         long recordSize = 0;
-        for (GrugField field : fields) {
+        for (Field field : fields) {
             switch (field.getType()) {
                 case INT:
                     recordSize += 4;
