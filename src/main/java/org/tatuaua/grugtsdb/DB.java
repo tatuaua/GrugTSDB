@@ -44,7 +44,7 @@ public class DB {
                 bucketFile, "r"
         );
 
-        GrugBucketMetadata metadata = new GrugBucketMetadata(dos, raf, calculateRecordSize(fields), 0, fields);
+        GrugBucketMetadata metadata = null;//new GrugBucketMetadata(dos, raf, calculateRecordSize(fields), 0, fields);
 
         System.out.println("created bucket with record size: " + metadata.getRecordSize());
         writeBucketMetadata(bucketName, metadata);
@@ -127,6 +127,7 @@ public class DB {
         return new GrugReadResponse(record);
     }
 
+    // TODO: pagination
     public static List<GrugReadResponse> readAll(String bucketName) throws IOException {
         GrugBucketMetadata metadata = BUCKET_METADATA_MAP.get(bucketName);
         List<GrugField> fields = metadata.getFields();

@@ -1,5 +1,6 @@
 package org.tatuaua.grugtsdb;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.tatuaua.grugtsdb.model.*;
@@ -29,23 +30,18 @@ public class UDPServer {
         this.port = port;
     }
 
-    public void start() {
+    public void start() throws JsonProcessingException {
         try {
             socket = new DatagramSocket(port);
             System.out.println("UDP Server started on port " + port);
 
             while (true) {
                 socket.receive(packet);
-
-                //String received = new String(packet.getData(), 0, packet.getLength()).trim();
-
                 JsonNode rootNode = MAPPER.readTree(packet.getData(), 0, packet.getLength());//MAPPER.readTree(received);
-
                 String actionTypeStr = rootNode.get("actionType").asText();
-
                 GrugActionType actionType = GrugActionType.fromString(actionTypeStr); // TODO handle error
 
-                switch(actionType) {
+                switch (actionType) {
                     case CREATE_BUCKET:
                         CreateBucketAction createBucketAction = MAPPER.readValue(packet.getData(), 0, packet.getLength(), CreateBucketAction.class);
                         try {
@@ -77,25 +73,31 @@ public class UDPServer {
                         );
                         break;
                     default:
-                        sendResponse(socket, packet, "Unknown action type: " + actionTypeStr);
+                        GrugErrorResponse error = new GrugErrorResponse("Unknown action type: " + actionTypeStr);
+                        sendResponse(socket, packet, MAPPER.writeValueAsString(error));
                         break;
                 }
             }
+
+        } catch (JsonProcessingException e) {
+            System.err.println("Failed to parse JSON: " + e.getMessage());
+            e.printStackTrace();
+            sendResponse(socket, packet, MAPPER.writeValueAsString(new GrugErrorResponse("Failed to parse JSON: " + e.getMessage())));
         } catch (SocketException e) {
-            System.err.println("Failed to create socket: " + e.getMessage());
+            System.err.println("Failed to create or access socket: " + e.getMessage());
             e.printStackTrace();
-            socket.close();
+            sendResponse(socket, packet, MAPPER.writeValueAsString(new GrugErrorResponse("Failed to create or access socket: " + e.getMessage())));
         } catch (IOException e) {
-            System.err.println("Error: " + e.getMessage());
+            System.err.println("IO Exception: " + e.getMessage());
             e.printStackTrace();
-            socket.close();
+            sendResponse(socket, packet, MAPPER.writeValueAsString(new GrugErrorResponse("IO Exception: " + e.getMessage())));
         } catch (Exception e) {
             e.printStackTrace();
-            socket.close();
+            sendResponse(socket, packet, MAPPER.writeValueAsString(new GrugErrorResponse("Exception: " + e.getMessage())));
         }
     }
 
-    public void sendResponse(DatagramSocket socket, DatagramPacket packet, String response) throws IOException {
+    public void sendResponse(DatagramSocket socket, DatagramPacket packet, String response) {
         byte[] responseBytes = response.getBytes();
         DatagramPacket responsePacket = new DatagramPacket(
                 responseBytes,
@@ -103,12 +105,11 @@ public class UDPServer {
                 packet.getAddress(),
                 packet.getPort()
         );
-        socket.send(responsePacket);
-    }
 
-    public void close() {
-        if(socket != null && !socket.isClosed()) {
-            socket.close();
+        try {
+            socket.send(responsePacket);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 

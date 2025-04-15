@@ -1,5 +1,6 @@
 package org.tatuaua.grugtsdb;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -30,7 +31,13 @@ class APITest {
     void setUp() throws IOException {
         server = new UDPServer(PORT);
         executor = Executors.newSingleThreadExecutor();
-        executor.submit(() -> server.start());
+        executor.submit(() -> {
+            try {
+                server.start();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
 
         try {
             Thread.sleep(100);
