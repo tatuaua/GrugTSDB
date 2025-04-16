@@ -183,7 +183,7 @@ class APITest {
         log.info("Reading all records from bucket: {}", BUCKET_NAME);
         readNode.put("type", ReadActionType.FULL.name());
         readResponse = sendAndReceive(readNode);
-        log.debug("Full read response: {}", readResponse);
+        //log.debug("Full read response: {}", readResponse);
         assertNotNull(readResponse, "Read action response should not be null");
         assertTrue(readResponse.contains(UPDATED_TEST_STRING_VALUE) || readResponse.contains(TEST_STRING_VALUE),
                 "Full read should contain at least one of the written values. Response: " + readResponse);

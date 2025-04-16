@@ -24,9 +24,9 @@ public class UDPServer {
     DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final Map<ActionType, String> responseMessages = Map.of(
-            ActionType.CREATE_BUCKET, "Bucket created successfully: {}",
-            ActionType.WRITE, "Data written to bucket: {}",
-            ActionType.CREATE_STREAM, "Stream started for buckets: {}"
+            ActionType.CREATE_BUCKET, "Bucket created successfully: %s",
+            ActionType.WRITE, "Data written to bucket: %s",
+            ActionType.CREATE_STREAM, "Stream started for buckets: %s"
     );
     private static final List<Subscriber> subscribers = new ArrayList<>();
 
@@ -49,18 +49,19 @@ public class UDPServer {
                     case CREATE_BUCKET:
                         CreateBucketAction createBucketAction = MAPPER.readValue(packet.getData(), 0, packet.getLength(), CreateBucketAction.class);
                         if (!createBucketAction.hasTimestamp()) {
-                            String errorMessage = "Error creating bucket '{}': missing timestamp";
-                            log.error(errorMessage, createBucketAction.getBucketName());
+                            String errorMessage = String.format("Error creating bucket '%s': missing timestamp", createBucketAction.getBucketName());
+                            log.error(errorMessage);
                             sendResponse(socket, packet, errorMessage);
                             break;
                         }
                         try {
                             DB.createBucket(createBucketAction.getBucketName(), createBucketAction.getFields());
-                            sendResponse(socket, packet, responseMessages.get(ActionType.CREATE_BUCKET));
-                            log.info(responseMessages.get(ActionType.CREATE_BUCKET), createBucketAction.getBucketName());
+                            String successMessage = String.format(responseMessages.get(ActionType.CREATE_BUCKET), createBucketAction.getBucketName());
+                            sendResponse(socket, packet, successMessage);
+                            log.info(successMessage);
                         } catch (IOException e) {
-                            String errorMessage = "Error creating bucket '{}': {}";
-                            log.error(errorMessage, createBucketAction.getBucketName(), e.getMessage());
+                            String errorMessage = String.format("Error creating bucket '%s': %s", createBucketAction.getBucketName(), e.getMessage());
+                            log.error(errorMessage);
                             sendResponse(socket, packet, errorMessage);
                         }
                         break;
@@ -68,8 +69,9 @@ public class UDPServer {
                         WriteAction writeAction = MAPPER.readValue(packet.getData(), 0, packet.getLength(), WriteAction.class);
                         try {
                             DB.writeToBucket(writeAction.getBucketName(), writeAction.getFieldValues());
-                            sendResponse(socket, packet, responseMessages.get(ActionType.WRITE));
-                            log.debug(responseMessages.get(ActionType.WRITE), writeAction.getBucketName());
+                            String successMessage = String.format(responseMessages.get(ActionType.WRITE), writeAction.getBucketName());
+                            sendResponse(socket, packet, successMessage);
+                            log.debug(successMessage);
 
                             for (Subscriber s : subscribers) {
                                 if (s.bucketsToStream.contains(writeAction.getBucketName())) {
@@ -80,8 +82,8 @@ public class UDPServer {
                                 }
                             }
                         } catch (IOException e) {
-                            String errorMessage = "Error writing to bucket '{}': {}";
-                            log.error(errorMessage, writeAction.getBucketName(), e.getMessage());
+                            String errorMessage = String.format("Error writing to bucket '%s': %s", writeAction.getBucketName(), e.getMessage());
+                            log.error(errorMessage);
                             sendResponse(socket, packet, errorMessage);
                         }
                         break;
@@ -99,8 +101,8 @@ public class UDPServer {
                             sendResponse(socket, packet, readResult);
                             log.debug("Read from bucket '{}' with type '{}'. Response: {}", readAction.getBucketName(), readAction.getType(), readResult);
                         } catch (IOException e) {
-                            String errorMessage = "Error reading from bucket '{}': {}";
-                            log.error(errorMessage, readAction.getBucketName(), e.getMessage());
+                            String errorMessage = String.format("Error reading from bucket '%s': %s", readAction.getBucketName(), e.getMessage());
+                            log.error(errorMessage);
                             sendResponse(socket, packet, errorMessage);
                         }
                         break;
@@ -112,13 +114,13 @@ public class UDPServer {
                                 createStreamAction.getBucketsToStream()
                         );
                         subscribers.add(newSubscriber);
-                        String streamResponseMessage = responseMessages.get(ActionType.CREATE_STREAM);
+                        String streamResponseMessage = String.format(responseMessages.get(ActionType.CREATE_STREAM), createStreamAction.getBucketsToStream());
                         sendResponse(socket, packet, MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(streamResponseMessage));
                         log.info("{} for subscriber {}:{}", streamResponseMessage, packet.getAddress().getHostAddress(), packet.getPort());
                         break;
                     default:
-                        String unknownActionError = "Unknown action type: {}";
-                        log.warn(unknownActionError, actionTypeStr);
+                        String unknownActionError = String.format("Unknown action type: %s", actionTypeStr);
+                        log.warn(unknownActionError);
                         ErrorResponse error = new ErrorResponse(unknownActionError);
                         sendResponse(socket, packet, MAPPER.writeValueAsString(error));
                         break;
@@ -128,20 +130,20 @@ public class UDPServer {
             }
 
         } catch (JsonProcessingException e) {
-            String errorMessage = "Failed to parse JSON: {}";
-            log.error(errorMessage, e.getMessage(), e);
+            String errorMessage = String.format("Failed to parse JSON: %s", e.getMessage());
+            log.error(errorMessage, e);
             sendResponse(socket, packet, errorMessage);
         } catch (SocketException e) {
-            String errorMessage = "Failed to create or access socket: {}";
-            log.error(errorMessage, e.getMessage(), e);
+            String errorMessage = String.format("Failed to create or access socket: %s", e.getMessage());
+            log.error(errorMessage, e);
             sendResponse(socket, packet, errorMessage);
         } catch (IOException e) {
-            String errorMessage = "IO Exception occurred: {}";
-            log.error(errorMessage, e.getMessage(), e);
+            String errorMessage = String.format("IO Exception occurred: %s", e.getMessage());
+            log.error(errorMessage, e);
             sendResponse(socket, packet, errorMessage);
         } catch (Exception e) {
-            String errorMessage = "An unexpected exception occurred: {}";
-            log.error(errorMessage, e.getMessage(), e);
+            String errorMessage = String.format("An unexpected exception occurred: %s", e.getMessage());
+            log.error(errorMessage, e);
             sendResponse(socket, packet, errorMessage);
         } finally {
             if (socket != null && !socket.isClosed()) {
