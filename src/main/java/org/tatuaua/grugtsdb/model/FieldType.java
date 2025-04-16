@@ -3,6 +3,6 @@ package org.tatuaua.grugtsdb.model;
 public enum FieldType {
     STRING,
     INT,
-    FLOAT,
+    DOUBLE,
     BOOLEAN
 }

@@ -82,37 +82,57 @@ class APITest {
 
     @Test
     void testBucketLifecycle() throws IOException {
+        // Hardcoded values as variables
+        String bucketName = "testBucket";
+        String testFieldName = "testField";
+        String testStringName = "testString";
+        String timestampName = "timestamp";
+        int testFieldValue = 42;
+        String testStringValue = "balls";
+        double timestampValue = 0.0f;
+        String updatedTestStringValue = "updateballs";
+        int updatedTestFieldValue = 53;
+        int writeAmount = 1000;
+
         // Create bucket
-        ObjectNode createNode = createActionNode("createBucket", "testBucket");
+        ObjectNode createNode = createActionNode("createBucket", bucketName);
         ArrayNode fieldsArray = MAPPER.createArrayNode();
         ObjectNode grugFieldNode = MAPPER.createObjectNode();
-        grugFieldNode.put("name", "testField");
+        grugFieldNode.put("name", testFieldName);
         grugFieldNode.put("type", FieldType.INT.name());
         grugFieldNode.put("size", 0);
         fieldsArray.add(grugFieldNode);
 
         ObjectNode grugFieldNode2 = MAPPER.createObjectNode();
-        grugFieldNode2.put("name", "testString");
+        grugFieldNode2.put("name", testStringName);
         grugFieldNode2.put("type", FieldType.STRING.name());
         grugFieldNode2.put("size", 50);
         fieldsArray.add(grugFieldNode2);
+
+        ObjectNode grugFieldNode3 = MAPPER.createObjectNode();
+        grugFieldNode3.put("name", timestampName);
+        grugFieldNode3.put("type", FieldType.DOUBLE.name());
+        grugFieldNode3.put("size", 0);
+        fieldsArray.add(grugFieldNode3);
+
         createNode.set("fields", fieldsArray);
 
         System.out.println("Creating bucket");
         String createResponse = sendAndReceive(createNode);
         assertNotNull(createResponse, "Create bucket response should not be null");
+        assertFalse(createResponse.contains("Error"));
 
         // Write to bucket
-        ObjectNode writeNode = createActionNode("write", "testBucket");
+        ObjectNode writeNode = createActionNode("write", bucketName);
         ObjectNode fieldValues = MAPPER.createObjectNode();
-        fieldValues.put("testField", 42);
-        fieldValues.put("testString", "balls");
+        fieldValues.put(testFieldName, testFieldValue);
+        fieldValues.put(testStringName, testStringValue);
+        fieldValues.put(timestampName, timestampValue);
         writeNode.set("fieldValues", fieldValues);
 
-        int amount = 1000;
-        System.out.println("Writing " + amount + " records");
+        System.out.println("Writing " + writeAmount + " records");
         long start = System.currentTimeMillis();
-        for(int i = 0; i < amount; i++) {
+        for(int i = 0; i < writeAmount; i++) {
             String writeResponse = sendAndReceive(writeNode);
             assertNotNull(writeResponse, "Write action response should not be null");
         }
@@ -122,30 +142,31 @@ class APITest {
         start = System.currentTimeMillis();
 
         // Read from bucket
-        ObjectNode readNode = createActionNode("read", "testBucket");
+        ObjectNode readNode = createActionNode("read", bucketName);
         readNode.put("type", ReadActionType.MOST_RECENT.name());
 
         System.out.println("Reading most recent record");
         String readResponse = sendAndReceive(readNode);
         System.out.println(readResponse);
         assertNotNull(readResponse, "Read action response should not be null");
-        assertTrue(readResponse.contains("balls"));
+        assertTrue(readResponse.contains(testStringValue));
 
         // Create stream
-        System.out.println("Creating stream for testBucket");
-        ObjectNode streamNode = createActionNode("createStream", "testBucket");
+        System.out.println("Creating stream for " + bucketName);
+        ObjectNode streamNode = createActionNode("createStream", bucketName);
         ArrayNode bucketsNode = MAPPER.createArrayNode();
-        bucketsNode.add("testBucket");
+        bucketsNode.add(bucketName);
         streamNode.put("bucketsToStream", bucketsNode);
         String streamResponse = sendAndReceive(streamNode);
         assertNotNull(streamResponse, "Stream response should not be null");
         assertTrue(streamResponse.contains("Started stream"));
 
         // Update bucket
-        ObjectNode updateNode = createActionNode("write", "testBucket");
+        ObjectNode updateNode = createActionNode("write", bucketName);
         fieldValues = MAPPER.createObjectNode();
-        fieldValues.put("testField", 53);
-        fieldValues.put("testString", "updateballs");
+        fieldValues.put(testFieldName, updatedTestFieldValue);
+        fieldValues.put(testStringName, updatedTestStringValue);
+        fieldValues.put(timestampName, timestampValue);
         updateNode.set("fieldValues", fieldValues);
         System.out.println("Writing one record");
         String updateResponse = sendAndReceive(updateNode);
@@ -156,7 +177,7 @@ class APITest {
         System.out.println("Receiving one value from stream");
         clientSocket.receive(receivePacket);
         String streamValue = new String(receivePacket.getData(), 0, receivePacket.getLength());
-        assertTrue(streamValue.contains("updateballs"));
+        assertTrue(streamValue.contains(updatedTestStringValue));
         System.out.println("Received from stream: " + streamValue);
 
         // Read from bucket
@@ -165,7 +186,7 @@ class APITest {
         readResponse = sendAndReceive(readNode);
         System.out.println(readResponse);
         assertNotNull(readResponse, "Read action response should not be null");
-        //assertTrue(readResponse.contains("updateballs"));
+        //assertTrue(readResponse.contains(updatedTestStringValue)); // Depending on the exact implementation, a full read might contain multiple records.
 
         end = System.currentTimeMillis();
         System.out.println("Read took: " + (end-start));

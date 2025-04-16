@@ -75,8 +75,8 @@ public class DB {
                 case BOOLEAN:
                     dos.writeBoolean((boolean) value);
                     break;
-                case FLOAT:
-                    dos.writeFloat((float) value);
+                case DOUBLE:
+                    dos.writeDouble((Double) value);
                     break;
                 case STRING:
                     dos.write(Utils.stringToByteArray((String) value, field.getSize()));
@@ -110,8 +110,8 @@ public class DB {
                 case BOOLEAN:
                     record.put(field.getName(), metadata.getRaf().readBoolean());
                     break;
-                case FLOAT:
-                    record.put(field.getName(), metadata.getRaf().readFloat());
+                case DOUBLE:
+                    record.put(field.getName(), metadata.getRaf().readDouble());
                     break;
                 case STRING:
                     byte[] buffer = new byte[field.getSize()];
@@ -152,8 +152,8 @@ public class DB {
                     case BOOLEAN:
                         response.getData().put(field.getName(), metadata.getRaf().readBoolean());
                         break;
-                    case FLOAT:
-                        response.getData().put(field.getName(), metadata.getRaf().readFloat());
+                    case DOUBLE:
+                        response.getData().put(field.getName(), metadata.getRaf().readDouble());
                         break;
                     case STRING:
                         byte[] buffer = new byte[field.getSize()];
@@ -172,42 +172,6 @@ public class DB {
         return responses;
     }
 
-    /*public static void printBucketContents(String bucketName) throws IOException {
-        System.out.println("Printing bucket contents");
-        GrugBucketMetadata metadata = BUCKET_METADATA_MAP.get(bucketName);
-        List<GrugField> fields = metadata.getFields();
-        File file = new File(DIR, bucketName + ".grug");
-
-        try (DataInputStream dis = new DataInputStream(new FileInputStream(file))) {
-            long fileSize = file.length();
-            long recordSize = metadata.getRecordSize();
-            long numRecords = fileSize / recordSize;
-
-            for (long i = 0; i < numRecords; i++) {
-                Map<String, Object> record = new HashMap<>();
-                for (GrugField field : fields) {
-                    switch (field.getType()) {
-                        case INT:
-                            record.put(field.getName(), dis.readInt());
-                            break;
-                        case BOOLEAN:
-                            record.put(field.getName(), dis.readBoolean());
-                            break;
-                        case FLOAT:
-                            record.put(field.getName(), dis.readFloat());
-                            break;
-                        case STRING:
-                            record.put(field.getName(), Utils.byteArrayToString(dis.readNBytes(field.getSize())));
-                            break;
-                        default:
-                            throw new IOException("Unsupported field type: " + field.getType());
-                    }
-                }
-                System.out.println("Record " + i + ": " + record);
-            }
-        }
-    }*/
-
     private static long calculateRecordSize(List<Field> fields) throws IOException {
         long recordSize = 0;
         for (Field field : fields) {
@@ -218,8 +182,8 @@ public class DB {
                 case BOOLEAN:
                     recordSize += 1;
                     break;
-                case FLOAT:
-                    recordSize += 4;
+                case DOUBLE:
+                    recordSize += 8;
                     break;
                 case STRING:
                     recordSize += field.getSize();
