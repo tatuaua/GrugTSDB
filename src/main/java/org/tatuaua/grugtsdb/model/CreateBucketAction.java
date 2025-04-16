@@ -16,6 +16,10 @@ public class CreateBucketAction {
     List<Field> fields;
 
     public boolean hasTimestamp() {
-        return this.fields.stream().anyMatch(field -> field.getName().equals("timestamp"));
+        return this.fields.stream()
+                .anyMatch(
+                        field -> field.getName().equals("timestamp")
+                                && field.getType().equals(FieldType.DOUBLE)
+                );
     }
 }
