@@ -67,6 +67,12 @@ public class UDPServer {
                         break;
                     case WRITE:
                         WriteAction writeAction = MAPPER.readValue(packet.getData(), 0, packet.getLength(), WriteAction.class);
+                        if(!writeAction.hasValidTimestamp()) {
+                            String errorMessage = String.format("Error writing to bucket '%s': invalid timestamp", writeAction.getBucketName());
+                            log.error(errorMessage);
+                            sendResponse(socket, packet, errorMessage);
+                            break;
+                        }
                         try {
                             DB.writeToBucket(writeAction.getBucketName(), writeAction.getFieldValues());
                             String successMessage = String.format(responseMessages.get(ActionType.WRITE), writeAction.getBucketName());

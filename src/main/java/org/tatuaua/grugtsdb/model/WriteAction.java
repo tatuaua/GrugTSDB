@@ -14,4 +14,9 @@ public class WriteAction {
     String bucketName;
 
     Map<String, Object> fieldValues;
+
+    public boolean hasValidTimestamp() {
+        Double timestamp = (Double) fieldValues.get("timestamp");
+        return timestamp < System.currentTimeMillis();
+    }
 }
