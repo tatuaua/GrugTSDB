@@ -190,5 +190,17 @@ class APITest {
 
         end = System.currentTimeMillis();
         log.info("Full read took: {} ms", (end - start));
+
+        // Write to bucket with null
+        ObjectNode writeNullNode = createActionNode("write");
+        fieldValues = MAPPER.createObjectNode();
+        fieldValues.put(TEST_FIELD_NAME, UPDATED_TEST_FIELD_VALUE);
+        //fieldValues.put(TEST_STRING_NAME, UPDATED_TEST_STRING_VALUE);
+        fieldValues.put(TIMESTAMP_NAME, TIMESTAMP_VALUE);
+        writeNullNode.set("fieldValues", fieldValues);
+        log.info("Writing one record to update bucket: {}", BUCKET_NAME);
+        String writeNullResponse = sendAndReceive(writeNullNode);
+        assertNotNull(writeNullResponse, "Update response should not be null");
+        assertTrue(writeNullResponse.contains("Error"));
     }
 }
