@@ -9,10 +9,7 @@ import org.tatuaua.grugtsdb.model.ReadResponse;
 
 import java.io.*;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class DB {
     private static final File DIR = new File("grug_tsdb");
@@ -62,27 +59,34 @@ public class DB {
         BucketMetadata metadata = BUCKET_METADATA_MAP.get(bucketName);
         DataOutputStream dos = metadata.getDos();
 
-        for (Field field : metadata.getFields()) {
+        Object[] values = new Object[metadata.getFields().size()];
+
+        // Need to first check if any field is null so we don't write partial records before throwing
+        for(int i = 0; i < metadata.getFields().size(); i++) {
+            Field field = metadata.getFields().get(i);
             Object value = fieldValues.get(field.getName());
-            if (value == null) {
+            if(Objects.isNull(value)) {
                 throw new IOException("Missing required field: " + field.getName());
             }
+            values[i] = value;
+        }
 
-            switch (field.getType()) {
+        for (int i = 0; i < metadata.getFields().size(); i++) {
+            switch (metadata.getFields().get(i).getType()) {
                 case INT:
-                    dos.writeInt((int) value);
+                    dos.writeInt((int) values[i]);
                     break;
                 case BOOLEAN:
-                    dos.writeBoolean((boolean) value);
+                    dos.writeBoolean((boolean) values[i]);
                     break;
                 case DOUBLE:
-                    dos.writeDouble((Double) value);
+                    dos.writeDouble((Double) values[i]);
                     break;
                 case STRING:
-                    dos.write(Utils.stringToByteArray((String) value, field.getSize()));
+                    dos.write(Utils.stringToByteArray((String) values[i], metadata.getFields().get(i).getSize()));
                     break;
                 default:
-                    throw new IOException("Unsupported field type: " + field.getType());
+                    throw new IOException("Unsupported field type: " + metadata.getFields().get(i).getType());
             }
         }
 
