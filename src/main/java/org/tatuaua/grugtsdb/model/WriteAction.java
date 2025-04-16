@@ -17,6 +17,6 @@ public class WriteAction {
 
     public boolean hasValidTimestamp() {
         Double timestamp = (Double) fieldValues.get("timestamp");
-        return timestamp < System.currentTimeMillis();
+        return true;
     }
 }

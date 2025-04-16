@@ -15,6 +15,8 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -36,6 +38,9 @@ class APITest {
     private static final String UPDATED_TEST_STRING_VALUE = "updateballs";
     private static final int UPDATED_TEST_FIELD_VALUE = 53;
     private static final int WRITE_AMOUNT = 1000;
+    private static final int CONCURRENT_WRITE_AMOUNT = 100000;
+    private static final int NUM_THREADS = 3;
+    InetAddress serverAddress;
 
     @BeforeEach
     void setUp() throws IOException {
@@ -202,5 +207,65 @@ class APITest {
         String writeNullResponse = sendAndReceive(writeNullNode);
         assertNotNull(writeNullResponse, "Update response should not be null");
         assertTrue(writeNullResponse.contains("Error"));
+    }
+
+    private String sendAndReceive(DatagramPacket sendPacket, DatagramPacket receivePacket) throws IOException {
+        clientSocket.send(sendPacket);
+        if (server.isClosed()) {
+            log.error("Server is closed, cannot receive response.");
+            return null;
+        }
+        clientSocket.receive(receivePacket);
+        return new String(receivePacket.getData(), 0, receivePacket.getLength()).trim();
+    }
+
+    @Test
+    void testConcurrentWrites() throws IOException, InterruptedException {
+        // Create bucket first
+        ObjectNode createNode = createActionNode("createBucket");
+        ArrayNode fieldsArray = MAPPER.createArrayNode();
+        ObjectNode intFieldNode = MAPPER.createObjectNode();
+        intFieldNode.put("name", TEST_FIELD_NAME);
+        intFieldNode.put("type", FieldType.INT.name());
+        intFieldNode.put("size", 0);
+        fieldsArray.add(intFieldNode);
+        ObjectNode timestampNode = MAPPER.createObjectNode();
+        timestampNode.put("name", TIMESTAMP_NAME);
+        timestampNode.put("type", FieldType.DOUBLE.name());
+        timestampNode.put("size", 0);
+        fieldsArray.add(timestampNode);
+        createNode.set("fields", fieldsArray);
+        String createResponse = sendAndReceive(createNode);
+        assertNotNull(createResponse, "Create bucket response should not be null");
+        assertFalse(createResponse.contains("Error"), "Create bucket should succeed. Response: " + createResponse);
+
+        ExecutorService executorService = Executors.newFixedThreadPool(NUM_THREADS);
+        Object sharedLock = new Object();
+        long startTime = System.currentTimeMillis();
+
+        IntStream.range(0, CONCURRENT_WRITE_AMOUNT).forEach(i -> executorService.submit(() -> {
+            ObjectNode writeNode = createActionNode("write");
+            ObjectNode fieldValues = MAPPER.createObjectNode();
+            fieldValues.put(TEST_FIELD_NAME, i); // Use a unique value for each write
+            fieldValues.put(TIMESTAMP_NAME, Double.valueOf((double)System.currentTimeMillis())); // Use a unique timestamp
+            writeNode.set("fieldValues", fieldValues);
+            try {
+                String response = sendAndReceive(writeNode);
+                assertNotNull(response, "Write response should not be null for message " + i);
+                assertFalse(response.contains("Error"), "Write should succeed for message " + i + ". Response: " + response);
+            } catch (IOException e) {
+                log.error("Error sending write request: {}", e.getMessage());
+                fail("Error during concurrent write: " + e.getMessage());
+            }
+        }));
+
+        executorService.shutdown();
+        boolean finished = executorService.awaitTermination(5, TimeUnit.SECONDS); // Adjust timeout as needed
+        long endTime = System.currentTimeMillis();
+        long totalTime = endTime - startTime;
+
+        assertTrue(finished, "Concurrent writes did not finish within the timeout.");
+        log.info("Wrote {} messages using {} threads in {} ms. Throughput: {} messages/s",
+                CONCURRENT_WRITE_AMOUNT, NUM_THREADS, totalTime, (double) CONCURRENT_WRITE_AMOUNT / (totalTime / 1000.0));
     }
 }
