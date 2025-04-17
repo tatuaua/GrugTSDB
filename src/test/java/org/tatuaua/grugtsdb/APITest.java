@@ -34,13 +34,12 @@ class APITest {
     private static final String TIMESTAMP_NAME = "timestamp";
     private static final int TEST_FIELD_VALUE = 42;
     private static final String TEST_STRING_VALUE = "balls";
-    private static final double TIMESTAMP_VALUE = 0.0f;
+    private static final long TIMESTAMP_VALUE = 0L;
     private static final String UPDATED_TEST_STRING_VALUE = "updateballs";
     private static final int UPDATED_TEST_FIELD_VALUE = 53;
     private static final int WRITE_AMOUNT = 1000;
     private static final int CONCURRENT_WRITE_AMOUNT = 100000;
     private static final int NUM_THREADS = 3;
-    InetAddress serverAddress;
 
     @BeforeEach
     void setUp() throws IOException {
@@ -115,7 +114,7 @@ class APITest {
 
         ObjectNode grugFieldNode3 = MAPPER.createObjectNode();
         grugFieldNode3.put("name", TIMESTAMP_NAME);
-        grugFieldNode3.put("type", FieldType.DOUBLE.name());
+        grugFieldNode3.put("type", FieldType.LONG.name());
         grugFieldNode3.put("size", 0);
         fieldsArray.add(grugFieldNode3);
 

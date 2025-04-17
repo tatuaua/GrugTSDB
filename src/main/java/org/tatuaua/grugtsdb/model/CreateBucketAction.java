@@ -19,7 +19,6 @@ public class CreateBucketAction {
         return this.fields.stream()
                 .anyMatch(
                         field -> field.getName().equals("timestamp")
-                                && field.getType().equals(FieldType.DOUBLE)
                 );
     }
 }

@@ -16,7 +16,7 @@ public class WriteAction {
     Map<String, Object> fieldValues;
 
     public boolean hasValidTimestamp() {
-        Double timestamp = (Double) fieldValues.get("timestamp");
-        return true;
+        long timestamp = (long) (Integer) fieldValues.get("timestamp");
+        return timestamp < System.currentTimeMillis();
     }
 }

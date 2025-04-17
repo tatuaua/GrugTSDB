@@ -85,6 +85,9 @@ public class DB {
                 case STRING:
                     dos.write(Utils.stringToByteArray((String) values[i], metadata.getFields().get(i).getSize()));
                     break;
+                case LONG:
+                    dos.writeLong((long) (Integer) values[i]);
+                    break;
                 default:
                     throw new IOException("Unsupported field type: " + metadata.getFields().get(i).getType());
             }
@@ -121,6 +124,9 @@ public class DB {
                     byte[] buffer = new byte[field.getSize()];
                     metadata.getRaf().readFully(buffer);
                     record.put(field.getName(), Utils.byteArrayToString(buffer));
+                    break;
+                case LONG:
+                    record.put(field.getName(), metadata.getRaf().readLong());
                     break;
                 default:
                     throw new IOException("Unsupported field type: " + field.getType());
@@ -164,12 +170,77 @@ public class DB {
                         metadata.getRaf().readFully(buffer);
                         response.getData().put(field.getName(), Utils.byteArrayToString(buffer));
                         break;
+                    case LONG:
+                        response.getData().put(field.getName(), metadata.getRaf().readLong());
+                        break;
                     default:
                         throw new IOException("Unsupported field type: " + field.getType());
                 }
             }
             position += metadata.getRecordSize();
             index++;
+        }
+
+        metadata.getRaf().seek(0); // resets the raf pointer to start of file
+        return responses;
+    }
+
+    public static List<ReadResponse> readInTimeRange(String bucketName, long start, long end) throws IOException {
+        BucketMetadata metadata = BUCKET_METADATA_MAP.get(bucketName);
+        List<Field> fields = metadata.getFields();
+
+        if (metadata.getRecordAmount() < 1) {
+            throw new IOException("Tried to read empty bucket");
+        }
+
+        long position = 0;
+        int index = 0;
+        metadata.getRaf().seek(position); // make sure we start at beginning of file
+        List<ReadResponse> responses = new ArrayList<>();
+
+        while(position < metadata.getRecordSize() * metadata.getRecordAmount()) {
+
+            boolean inRange = true;
+            ReadResponse response = new ReadResponse(new HashMap<>());
+
+            for (Field field : fields) {
+
+                if(field.getName().equals("timestamp")) {
+                    long timestamp = metadata.getRaf().readLong();
+                    if(timestamp < start || timestamp > end) {
+                        inRange = false;
+                        break;
+                    }
+                }
+
+                switch (field.getType()) {
+                    case INT:
+                        response.getData().put(field.getName(), metadata.getRaf().readInt());
+                        break;
+                    case BOOLEAN:
+                        response.getData().put(field.getName(), metadata.getRaf().readBoolean());
+                        break;
+                    case DOUBLE:
+                        response.getData().put(field.getName(), metadata.getRaf().readDouble());
+                        break;
+                    case STRING:
+                        byte[] buffer = new byte[field.getSize()];
+                        metadata.getRaf().readFully(buffer);
+                        response.getData().put(field.getName(), Utils.byteArrayToString(buffer));
+                        break;
+                    case LONG:
+                        response.getData().put(field.getName(), metadata.getRaf().readLong());
+                        break;
+                    default:
+                        throw new IOException("Unsupported field type: " + field.getType());
+                }
+            }
+
+            if(inRange) {
+                responses.add(index, response);
+                index++;
+            }
+            position += metadata.getRecordSize();
         }
 
         metadata.getRaf().seek(0); // resets the raf pointer to start of file
@@ -186,7 +257,7 @@ public class DB {
                 case BOOLEAN:
                     recordSize += 1;
                     break;
-                case DOUBLE:
+                case DOUBLE, LONG:
                     recordSize += 8;
                     break;
                 case STRING:

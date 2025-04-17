@@ -4,5 +4,6 @@ public enum FieldType {
     STRING,
     INT,
     DOUBLE,
-    BOOLEAN
+    BOOLEAN,
+    LONG
 }
