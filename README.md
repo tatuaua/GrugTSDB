@@ -5,6 +5,8 @@
 * Data Ingestion: Ability to ingest time series data points into the storage engine.
 * Basic Querying: Implemented basic querying capabilities to retrieve time series data.
 * Basic Streaming: Implemented a simple streaming mechanism to allow streaming writes to a udp client.
+* Timestamping: Ability to associate data points with specific points in time.
+* Querying by Time Range: Efficient retrieval of data within specified time intervals. 
 
 ## Roadmap:
 * Basic Aggregations: Support for common aggregate functions (e.g., average, sum, min, max, count) over time windows.
