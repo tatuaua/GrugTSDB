@@ -17,26 +17,28 @@ import java.util.Map;
 
 @Slf4j
 public class UDPServer {
-    private final int port;
-    private final int bufferSize = 1024;
-    private DatagramSocket socket;
-    byte[] buffer = new byte[bufferSize];
-    DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
     private static final ObjectMapper MAPPER = new ObjectMapper();
-    private static final Map<ActionType, String> responseMessages = Map.of(
+    private static final Map<ActionType, String> RESPONSE_MESSAGES = Map.of(
             ActionType.CREATE_BUCKET, "Bucket created successfully: %s",
             ActionType.WRITE, "Data written to bucket: %s",
             ActionType.CREATE_STREAM, "Stream started for buckets: %s"
     );
-    private static final List<Subscriber> subscribers = new ArrayList<>();
+    private static final List<Subscriber> SUBSCRIBERS = new ArrayList<>();
+
+    private final int port;
+    private final int bufferSize = 1024;
+    private DatagramSocket socket;
+    private final byte[] buffer = new byte[bufferSize];
+    private final DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
 
     public UDPServer(int port) {
         this.port = port;
     }
 
     public void stop() {
-        if(!(socket == null) && !socket.isClosed()) {
+        if (socket != null && !socket.isClosed()) {
             socket.close();
+            log.info("UDP Server socket closed.");
         }
     }
 
@@ -46,126 +48,142 @@ public class UDPServer {
             log.info("UDP Server started on port {}", port);
 
             while (true) {
-                socket.receive(packet);
-                JsonNode rootNode = MAPPER.readTree(packet.getData(), 0, packet.getLength());
-                String actionTypeStr = rootNode.get("actionType").asText();
-                ActionType actionType = ActionType.fromString(actionTypeStr);
-
-                switch (actionType) {
-                    case CREATE_BUCKET:
-                        CreateBucketAction createBucketAction = MAPPER.readValue(packet.getData(), 0, packet.getLength(), CreateBucketAction.class);
-                        if (!createBucketAction.hasTimestamp()) {
-                            String errorMessage = String.format("Error creating bucket '%s': missing timestamp", createBucketAction.getBucketName());
-                            log.error(errorMessage);
-                            sendResponse(socket, packet, errorMessage);
-                            break;
-                        }
-                        try {
-                            DB.createBucket(createBucketAction.getBucketName(), createBucketAction.getFields());
-                            String successMessage = String.format(responseMessages.get(ActionType.CREATE_BUCKET), createBucketAction.getBucketName());
-                            sendResponse(socket, packet, successMessage);
-                            log.info(successMessage);
-                        } catch (IOException e) {
-                            String errorMessage = String.format("Error creating bucket '%s': %s", createBucketAction.getBucketName(), e.getMessage());
-                            log.error(errorMessage);
-                            sendResponse(socket, packet, errorMessage);
-                        }
-                        break;
-                    case WRITE:
-                        WriteAction writeAction = MAPPER.readValue(packet.getData(), 0, packet.getLength(), WriteAction.class);
-                        if(!writeAction.hasValidTimestamp()) {
-                            String errorMessage = String.format("Error writing to bucket '%s': invalid timestamp", writeAction.getBucketName());
-                            log.error(errorMessage);
-                            sendResponse(socket, packet, errorMessage);
-                            break;
-                        }
-                        try {
-                            DB.writeToBucket(writeAction.getBucketName(), writeAction.getFieldValues());
-                            String successMessage = String.format(responseMessages.get(ActionType.WRITE), writeAction.getBucketName());
-                            sendResponse(socket, packet, successMessage);
-                            log.debug(successMessage);
-
-                            for (Subscriber s : subscribers) {
-                                if (s.bucketsToStream.contains(writeAction.getBucketName())) {
-                                    byte[] dataToSend = MAPPER.writerWithDefaultPrettyPrinter().writeValueAsBytes(writeAction);
-                                    DatagramPacket streamPacket = new DatagramPacket(dataToSend, dataToSend.length, s.address, s.port);
-                                    socket.send(streamPacket);
-                                    log.debug("Sent update for bucket '{}' to stream subscriber {}:{}", writeAction.getBucketName(), s.address.getHostAddress(), s.port);
-                                }
-                            }
-                        } catch (IOException e) {
-                            String errorMessage = String.format("Error writing to bucket '%s': %s", writeAction.getBucketName(), e.getMessage());
-                            log.error(errorMessage);
-                            sendResponse(socket, packet, errorMessage);
-                        }
-                        break;
-                    case READ:
-                        ReadAction readAction = MAPPER.readValue(packet.getData(), 0, packet.getLength(), ReadAction.class);
-                        String readResult;
-                        try {
-                            readResult = MAPPER.writerWithDefaultPrettyPrinter()
-                                    .writeValueAsString(
-                                            switch (readAction.getType()) {
-                                                case FULL -> DB.readAll(readAction.getBucketName());
-                                                case MOST_RECENT -> DB.readMostRecent(readAction.getBucketName());
-                                            }
-                                    );
-                            sendResponse(socket, packet, readResult);
-                            log.debug("Read from bucket '{}' with type '{}'. Response: {}", readAction.getBucketName(), readAction.getType(), readResult);
-                        } catch (IOException e) {
-                            String errorMessage = String.format("Error reading from bucket '%s': %s", readAction.getBucketName(), e.getMessage());
-                            log.error(errorMessage);
-                            sendResponse(socket, packet, errorMessage);
-                        }
-                        break;
-                    case CREATE_STREAM:
-                        CreateStreamAction createStreamAction = MAPPER.readValue(packet.getData(), 0, packet.getLength(), CreateStreamAction.class);
-                        Subscriber newSubscriber = new Subscriber(
-                                packet.getAddress(),
-                                packet.getPort(),
-                                createStreamAction.getBucketsToStream()
-                        );
-                        subscribers.add(newSubscriber);
-                        String streamResponseMessage = String.format(responseMessages.get(ActionType.CREATE_STREAM), createStreamAction.getBucketsToStream());
-                        sendResponse(socket, packet, MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(streamResponseMessage));
-                        log.info("{} for subscriber {}:{}", streamResponseMessage, packet.getAddress().getHostAddress(), packet.getPort());
-                        break;
-                    default:
-                        String unknownActionError = String.format("Unknown action type: %s", actionTypeStr);
-                        log.warn(unknownActionError);
-                        ErrorResponse error = new ErrorResponse(unknownActionError);
-                        sendResponse(socket, packet, MAPPER.writeValueAsString(error));
-                        break;
-                }
-                // Reset the packet buffer for the next receive
-                packet.setLength(bufferSize);
+                receiveAndProcessPacket();
             }
 
-        } catch (JsonProcessingException e) {
-            String errorMessage = String.format("Failed to parse JSON: %s", e.getMessage());
-            log.error(errorMessage, e);
-            sendResponse(socket, packet, errorMessage);
         } catch (SocketException e) {
-            String errorMessage = String.format("Failed to create or access socket: %s", e.getMessage());
-            log.error(errorMessage, e);
-            sendResponse(socket, packet, errorMessage);
+            log.error("Failed to create or access socket on port {}: {}", port, e.getMessage(), e);
+            sendErrorResponse(packet, "Failed to create or access socket.");
         } catch (IOException e) {
-            String errorMessage = String.format("IO Exception occurred: %s", e.getMessage());
-            log.error(errorMessage, e);
-            sendResponse(socket, packet, errorMessage);
+            log.error("IO Exception occurred during server operation: {}", e.getMessage(), e);
+            sendErrorResponse(packet, "IO error during server operation.");
         } catch (Exception e) {
-            String errorMessage = String.format("An unexpected exception occurred: %s", e.getMessage());
-            log.error(errorMessage, e);
-            sendResponse(socket, packet, errorMessage);
+            log.error("An unexpected exception occurred: {}", e.getMessage(), e);
+            sendErrorResponse(packet, "An unexpected error occurred.");
         } finally {
-            if (socket != null && !socket.isClosed()) {
-                socket.close();
-                log.info("UDP Server socket closed.");
+            stop(); // Ensure socket is closed on exit
+        }
+    }
+
+    private void receiveAndProcessPacket() throws IOException {
+        socket.receive(packet);
+        try {
+            JsonNode rootNode = MAPPER.readTree(packet.getData(), 0, packet.getLength());
+            String actionTypeStr = rootNode.get("actionType").asText();
+            ActionType actionType = ActionType.fromString(actionTypeStr);
+
+            switch (actionType) {
+                case CREATE_BUCKET -> handleCreateBucket(packet);
+                case WRITE -> handleWrite(packet);
+                case READ -> handleRead(packet);
+                case CREATE_STREAM -> handleCreateStream(packet);
+                default -> handleUnknownAction(packet, actionType.toString());
+            }
+        } catch (JsonProcessingException e) {
+            log.warn("Received invalid JSON from {}:{}: {}", packet.getAddress().getHostAddress(), packet.getPort(), e.getMessage());
+            sendErrorResponse(packet, "Invalid JSON received.");
+        } finally {
+            // Reset the packet buffer for the next receive
+            packet.setLength(bufferSize);
+        }
+    }
+
+    private void handleCreateBucket(DatagramPacket packet) throws IOException {
+        try {
+            CreateBucketAction createBucketAction = MAPPER.readValue(packet.getData(), 0, packet.getLength(), CreateBucketAction.class);
+            if (!createBucketAction.hasTimestamp()) {
+                String errorMessage = String.format("Error creating bucket '%s': missing timestamp", createBucketAction.getBucketName());
+                log.error(errorMessage);
+                sendResponse(packet, errorMessage);
+                return;
+            }
+            DB.createBucket(createBucketAction.getBucketName(), createBucketAction.getFields());
+            String successMessage = String.format(RESPONSE_MESSAGES.get(ActionType.CREATE_BUCKET), createBucketAction.getBucketName());
+            sendResponse(packet, successMessage);
+            log.info(successMessage);
+        } catch (IOException e) {
+            String errorMessage = String.format("Error creating bucket: %s", e.getMessage());
+            log.error(errorMessage);
+            sendResponse(packet, errorMessage);
+        }
+    }
+
+    private void handleWrite(DatagramPacket packet) throws IOException {
+        try {
+            WriteAction writeAction = MAPPER.readValue(packet.getData(), 0, packet.getLength(), WriteAction.class);
+            if (!writeAction.hasValidTimestamp()) {
+                String errorMessage = String.format("Error writing to bucket '%s': invalid timestamp", writeAction.getBucketName());
+                log.error(errorMessage);
+                sendResponse(packet, errorMessage);
+                return;
+            }
+            DB.writeToBucket(writeAction.getBucketName(), writeAction.getFieldValues());
+            String successMessage = String.format(RESPONSE_MESSAGES.get(ActionType.WRITE), writeAction.getBucketName());
+            sendResponse(packet, successMessage);
+            log.debug(successMessage);
+            notifySubscribers(writeAction);
+        } catch (IOException e) {
+            String errorMessage = String.format("Error writing to bucket: %s", e.getMessage());
+            log.error(errorMessage);
+            sendResponse(packet, errorMessage);
+        }
+    }
+
+    private void handleRead(DatagramPacket packet) throws IOException {
+        try {
+            ReadAction readAction = MAPPER.readValue(packet.getData(), 0, packet.getLength(), ReadAction.class);
+            String readResult = MAPPER.writerWithDefaultPrettyPrinter()
+                    .writeValueAsString(
+                            switch (readAction.getType()) {
+                                case FULL -> DB.readAll(readAction.getBucketName());
+                                case MOST_RECENT -> DB.readMostRecent(readAction.getBucketName());
+                            }
+                    );
+            sendResponse(packet, readResult);
+            log.debug("Read from bucket '{}' with type '{}'. Response: {}", readAction.getBucketName(), readAction.getType(), readResult);
+        } catch (IOException e) {
+            String errorMessage = String.format("Error reading from bucket: %s", e.getMessage());
+            log.error(errorMessage);
+            sendResponse(packet, errorMessage);
+        }
+    }
+
+    private void handleCreateStream(DatagramPacket packet) throws IOException {
+        try {
+            CreateStreamAction createStreamAction = MAPPER.readValue(packet.getData(), 0, packet.getLength(), CreateStreamAction.class);
+            Subscriber newSubscriber = new Subscriber(
+                    packet.getAddress(),
+                    packet.getPort(),
+                    createStreamAction.getBucketsToStream()
+            );
+            SUBSCRIBERS.add(newSubscriber);
+            String streamResponseMessage = String.format(RESPONSE_MESSAGES.get(ActionType.CREATE_STREAM), createStreamAction.getBucketsToStream());
+            sendResponse(packet, MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(streamResponseMessage));
+            log.info("{} for subscriber {}:{}", streamResponseMessage, packet.getAddress().getHostAddress(), packet.getPort());
+        } catch (IOException e) {
+            log.error("Error creating stream subscription: {}", e.getMessage());
+            sendResponse(packet, "Error creating stream subscription.");
+        }
+    }
+
+    private void handleUnknownAction(DatagramPacket packet, String actionTypeStr) throws IOException {
+        String errorMessage = String.format("Unknown action type: %s", actionTypeStr);
+        log.warn(errorMessage);
+        sendErrorResponse(packet, errorMessage);
+    }
+
+    private void notifySubscribers(WriteAction writeAction) throws IOException {
+        byte[] dataToSend = MAPPER.writerWithDefaultPrettyPrinter().writeValueAsBytes(writeAction);
+        for (Subscriber subscriber : SUBSCRIBERS) {
+            if (subscriber.bucketsToStream().contains(writeAction.getBucketName())) {
+                DatagramPacket streamPacket = new DatagramPacket(dataToSend, dataToSend.length, subscriber.address(), subscriber.port());
+                socket.send(streamPacket);
+                log.debug("Sent update for bucket '{}' to stream subscriber {}:{}", writeAction.getBucketName(), subscriber.address().getHostAddress(), subscriber.port());
             }
         }
     }
 
-    public void sendResponse(DatagramSocket socket, DatagramPacket packet, String response) {
+    public void sendResponse(DatagramPacket packet, String response) {
         byte[] responseBytes;
         int maxLength = 500;
         if (response.length() > maxLength) {
@@ -190,8 +208,19 @@ public class UDPServer {
         }
     }
 
+    private void sendErrorResponse(DatagramPacket packet, String errorMessage) {
+        try {
+            ErrorResponse errorResponse = new ErrorResponse(errorMessage);
+            String jsonError = MAPPER.writeValueAsString(errorResponse);
+            sendResponse(packet, jsonError);
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize error response: {}", e.getMessage());
+            sendResponse(packet, "Internal server error.");
+        }
+    }
+
     private void removeStreamSub(InetAddress address, int port) {
-        boolean removed = subscribers.removeIf(s -> s.address.equals(address) && s.port == port);
+        boolean removed = SUBSCRIBERS.removeIf(s -> s.address().equals(address) && s.port() == port);
         if (removed) {
             log.info("Removed stream subscription for {}:{}", address.getHostAddress(), port);
         } else {

@@ -7,12 +7,7 @@ import java.util.List;
 
 @Data
 public class CreateBucketAction {
-
-    @JsonIgnore
-    ActionType actionType;
-
     String bucketName;
-
     List<Field> fields;
 
     public boolean hasTimestamp() {

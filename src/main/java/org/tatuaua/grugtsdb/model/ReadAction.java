@@ -5,11 +5,6 @@ import lombok.Data;
 
 @Data
 public class ReadAction {
-
-    @JsonIgnore
-    ActionType actionType;
-
     String bucketName;
-
     ReadActionType type;
 }

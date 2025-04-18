@@ -7,12 +7,7 @@ import java.util.Map;
 
 @Data
 public class WriteAction {
-
-    @JsonIgnore
-    ActionType actionType;
-
     String bucketName;
-
     Map<String, Object> fieldValues;
 
     public boolean hasValidTimestamp() {
