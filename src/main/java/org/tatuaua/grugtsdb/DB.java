@@ -73,23 +73,12 @@ public class DB {
 
         for (int i = 0; i < metadata.getFields().size(); i++) {
             switch (metadata.getFields().get(i).getType()) {
-                case INT:
-                    dos.writeInt((int) values[i]);
-                    break;
-                case BOOLEAN:
-                    dos.writeBoolean((boolean) values[i]);
-                    break;
-                case DOUBLE:
-                    dos.writeDouble((Double) values[i]);
-                    break;
-                case STRING:
-                    dos.write(Utils.stringToByteArray((String) values[i], metadata.getFields().get(i).getSize()));
-                    break;
-                case LONG:
-                    dos.writeLong((long) values[i]);
-                    break;
-                default:
-                    throw new IOException("Unsupported field type: " + metadata.getFields().get(i).getType());
+                case INT -> dos.writeInt((int) values[i]);
+                case BOOLEAN -> dos.writeBoolean((boolean) values[i]);
+                case DOUBLE -> dos.writeDouble((Double) values[i]);
+                case STRING -> dos.write(Utils.stringToByteArray((String) values[i], metadata.getFields().get(i).getSize()));
+                case LONG -> dos.writeLong((long) values[i]);
+                default -> throw new IOException("Unsupported field type: " + metadata.getFields().get(i).getType());
             }
         }
 
@@ -111,25 +100,16 @@ public class DB {
         Map<String, Object> record = new HashMap<>();
         for (Field field : fields) {
             switch (field.getType()) {
-                case INT:
-                    record.put(field.getName(), metadata.getRaf().readInt());
-                    break;
-                case BOOLEAN:
-                    record.put(field.getName(), metadata.getRaf().readBoolean());
-                    break;
-                case DOUBLE:
-                    record.put(field.getName(), metadata.getRaf().readDouble());
-                    break;
-                case STRING:
+                case INT -> record.put(field.getName(), metadata.getRaf().readInt());
+                case BOOLEAN -> record.put(field.getName(), metadata.getRaf().readBoolean());
+                case DOUBLE -> record.put(field.getName(), metadata.getRaf().readDouble());
+                case STRING -> {
                     byte[] buffer = new byte[field.getSize()];
                     metadata.getRaf().readFully(buffer);
                     record.put(field.getName(), Utils.byteArrayToString(buffer));
-                    break;
-                case LONG:
-                    record.put(field.getName(), metadata.getRaf().readLong());
-                    break;
-                default:
-                    throw new IOException("Unsupported field type: " + field.getType());
+                }
+                case LONG -> record.put(field.getName(), metadata.getRaf().readLong());
+                default -> throw new IOException("Unsupported field type: " + field.getType());
             }
         }
         metadata.getRaf().seek(0); // resets the raf pointer to start of file
@@ -210,25 +190,16 @@ public class DB {
 
     private static void readField(BucketMetadata metadata, ReadResponse response, Field field) throws IOException {
         switch (field.getType()) {
-            case INT:
-                response.getData().put(field.getName(), metadata.getRaf().readInt());
-                break;
-            case BOOLEAN:
-                response.getData().put(field.getName(), metadata.getRaf().readBoolean());
-                break;
-            case DOUBLE:
-                response.getData().put(field.getName(), metadata.getRaf().readDouble());
-                break;
-            case STRING:
+            case INT -> response.getData().put(field.getName(), metadata.getRaf().readInt());
+            case BOOLEAN -> response.getData().put(field.getName(), metadata.getRaf().readBoolean());
+            case DOUBLE -> response.getData().put(field.getName(), metadata.getRaf().readDouble());
+            case STRING -> {
                 byte[] buffer = new byte[field.getSize()];
                 metadata.getRaf().readFully(buffer);
                 response.getData().put(field.getName(), Utils.byteArrayToString(buffer));
-                break;
-            case LONG:
-                response.getData().put(field.getName(), metadata.getRaf().readLong());
-                break;
-            default:
-                throw new IOException("Unsupported field type: " + field.getType());
+            }
+            case LONG -> response.getData().put(field.getName(), metadata.getRaf().readLong());
+            default -> throw new IOException("Unsupported field type: " + field.getType());
         }
     }
 
@@ -236,23 +207,11 @@ public class DB {
         long recordSize = 0;
         for (Field field : fields) {
             switch (field.getType()) {
-                case INT:
-                    recordSize += Integer.BYTES;
-                    break;
-                case BOOLEAN:
-                    recordSize += Byte.BYTES;
-                    break;
-                case DOUBLE:
-                    recordSize += Double.BYTES;
-                    break;
-                case LONG:
-                    recordSize += Long.BYTES;
-                    break;
-                case STRING:
-                    recordSize += field.getSize();
-                    break;
-                default:
-                    throw new IOException("Unsupported field type: " + field.getType());
+                case INT -> recordSize += Integer.BYTES;
+                case BOOLEAN -> recordSize += Byte.BYTES;
+                case DOUBLE, LONG -> recordSize += Double.BYTES;
+                case STRING -> recordSize += field.getSize();
+                default -> throw new IOException("Unsupported field type: " + field.getType());
             }
         }
 
