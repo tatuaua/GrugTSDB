@@ -34,7 +34,13 @@ public class UDPServer {
         this.port = port;
     }
 
-    public void start() throws JsonProcessingException {
+    public void stop() {
+        if(!(socket == null) && !socket.isClosed()) {
+            socket.close();
+        }
+    }
+
+    public void start() {
         try {
             socket = new DatagramSocket(port);
             log.info("UDP Server started on port {}", port);
