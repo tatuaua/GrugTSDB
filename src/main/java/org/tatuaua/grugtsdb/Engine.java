@@ -3,7 +3,7 @@ package org.tatuaua.grugtsdb;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.tatuaua.grugtsdb.model.BucketMetadata;
 import org.tatuaua.grugtsdb.model.Field;
-
+import org.tatuaua.grugtsdb.model.FieldType;
 import org.apache.commons.io.FileUtils;
 import org.tatuaua.grugtsdb.model.ReadResponse;
 
@@ -87,11 +87,11 @@ public class Engine {
 
     public static ReadResponse readMostRecent(String bucketName) throws IOException {
         BucketMetadata metadata = BUCKET_METADATA_MAP.get(bucketName);
-        List<Field> fields = metadata.getFields();
-
         if (metadata.getRecordAmount() < 1) {
             throw new IOException("Tried to read empty bucket");
         }
+
+        List<Field> fields = metadata.getFields();
 
         long lastRecordPosition = (metadata.getRecordAmount() - 1) * metadata.getRecordSize();
 
@@ -119,11 +119,11 @@ public class Engine {
     // TODO: pagination
     public static List<ReadResponse> readAll(String bucketName) throws IOException {
         BucketMetadata metadata = BUCKET_METADATA_MAP.get(bucketName);
-        List<Field> fields = metadata.getFields();
-
         if (metadata.getRecordAmount() < 1) {
             throw new IOException("Tried to read empty bucket");
         }
+
+        List<Field> fields = metadata.getFields();
 
         long position = 0;
         int index = 0;
@@ -147,11 +147,11 @@ public class Engine {
 
     public static List<ReadResponse> readInTimeRange(String bucketName, long start, long end) throws IOException {
         BucketMetadata metadata = BUCKET_METADATA_MAP.get(bucketName);
-        List<Field> fields = metadata.getFields();
-
         if (metadata.getRecordAmount() < 1) {
             throw new IOException("Tried to read empty bucket");
         }
+
+        List<Field> fields = metadata.getFields();
 
         long position = 0;
         int index = 0;
