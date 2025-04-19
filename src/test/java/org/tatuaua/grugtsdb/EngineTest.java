@@ -174,4 +174,41 @@ class EngineTest {
         assertEquals(1, responses.size());
         assertEquals(42, responses.get(0).getData().get("value"));
     }
+
+    @Test
+    void testReadAvgInRange() throws IOException {
+        String bucketName = "testBucket6";
+        List<Field> fields = List.of(
+                new Field("timestamp", FieldType.LONG, 8),
+                new Field("value", FieldType.INT, 4)
+        );
+
+        Engine.createBucket(bucketName, fields);
+
+        long now = System.currentTimeMillis();
+
+        Map<String, Object> fieldValues1 = Map.of(
+                "timestamp", now - 1000,
+                "value", 42
+        );
+
+        Map<String, Object> fieldValues2 = Map.of(
+                "timestamp", now - 999,
+                "value", 44
+        );
+
+        Map<String, Object> fieldValues3 = Map.of(
+                "timestamp", now + 1000,
+                "value", 84
+        );
+
+        Engine.writeToBucket(bucketName, fieldValues1);
+        Engine.writeToBucket(bucketName, fieldValues2);
+        Engine.writeToBucket(bucketName, fieldValues3);
+
+        ReadResponse response = Engine.readAvgInTimeRange(bucketName, now - 2000, now, "value");
+
+        assertNotNull(response);
+        assertEquals(43.0, response.getData().get("value_avg"));
+    }
 }

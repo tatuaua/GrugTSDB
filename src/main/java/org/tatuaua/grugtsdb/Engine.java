@@ -188,6 +188,54 @@ public class Engine {
         return responses;
     }
 
+    public static ReadResponse readAvgInTimeRange(String bucketName, long start, long end, String fieldName) throws IOException {
+        BucketMetadata metadata = BUCKET_METADATA_MAP.get(bucketName);
+        if (metadata.getRecordAmount() < 1) {
+            throw new IOException("Tried to read empty bucket");
+        }
+
+        List<Field> fields = metadata.getFields();
+        Field targetField = null;
+        for (Field field : fields) {
+            if (field.getName().equals(fieldName)) {
+                targetField = field;
+                break;
+            }
+        }
+
+        if (targetField == null) {
+            throw new IllegalArgumentException("Field '" + fieldName + "' does not exist in bucket '" + bucketName + "'");
+        }
+
+        if (!(targetField.getType() == FieldType.INT || targetField.getType() == FieldType.DOUBLE || targetField.getType() == FieldType.LONG)) {
+            throw new IllegalArgumentException("Cannot calculate average of field type: " + targetField.getType());
+        }
+
+        List<ReadResponse> records = readInTimeRange(bucketName, start, end);
+
+        if (records.isEmpty()) {
+            throw new IOException("No records to calculate average on");
+        }
+
+        double sum = 0;
+        for (ReadResponse record : records) {
+            Object value = record.getData().get(fieldName);
+            if (value != null) {
+                switch (targetField.getType()) {
+                    case INT -> sum += (Integer) value;
+                    case DOUBLE -> sum += (Double) value;
+                    case LONG -> sum += (Long) value;
+                    default -> {
+                        throw new IllegalStateException("Unexpected field type during average calculation: " + targetField.getType());
+                    }
+                }
+            }
+        }
+
+        double average = sum / records.size();
+        return new ReadResponse(Map.of(fieldName + "_avg", average));
+    }
+    
     private static void readField(BucketMetadata metadata, ReadResponse response, Field field) throws IOException {
         switch (field.getType()) {
             case INT -> response.getData().put(field.getName(), metadata.getRaf().readInt());
