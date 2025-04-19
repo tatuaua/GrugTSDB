@@ -10,14 +10,14 @@ import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class DBTest {
+class EngineTest {
 
     @BeforeEach
     void setUp() throws IOException {
         // Clear the database directory before each test
-        DB.BUCKET_METADATA_MAP.clear();
-        DB.DIR.delete();
-        DB.DIR.mkdir();
+        Engine.BUCKET_METADATA_MAP.clear();
+        Engine.DIR.delete();
+        Engine.DIR.mkdir();
     }
 
     @Test
@@ -28,10 +28,10 @@ class DBTest {
                 new Field("value", FieldType.INT, 4)
         );
 
-        DB.createBucket(bucketName, fields);
+        Engine.createBucket(bucketName, fields);
 
-        assertTrue(DB.BUCKET_METADATA_MAP.containsKey(bucketName));
-        assertEquals(fields, DB.BUCKET_METADATA_MAP.get(bucketName).getFields());
+        assertTrue(Engine.BUCKET_METADATA_MAP.containsKey(bucketName));
+        assertEquals(fields, Engine.BUCKET_METADATA_MAP.get(bucketName).getFields());
     }
 
     @Test
@@ -42,16 +42,16 @@ class DBTest {
                 new Field("value", FieldType.INT, 4)
         );
 
-        DB.createBucket(bucketName, fields);
+        Engine.createBucket(bucketName, fields);
 
         Map<String, Object> fieldValues = Map.of(
                 "timestamp", System.currentTimeMillis(),
                 "value", 42
         );
 
-        DB.writeToBucket(bucketName, fieldValues);
+        Engine.writeToBucket(bucketName, fieldValues);
 
-        assertEquals(1, DB.BUCKET_METADATA_MAP.get(bucketName).getRecordAmount());
+        assertEquals(1, Engine.BUCKET_METADATA_MAP.get(bucketName).getRecordAmount());
     }
 
     @Test
@@ -62,7 +62,7 @@ class DBTest {
                 new Field("value", FieldType.INT, 4)
         );
 
-        DB.createBucket(bucketName, fields);
+        Engine.createBucket(bucketName, fields);
 
         Map<String, Object> fieldValues1 = Map.of(
                 "timestamp", System.currentTimeMillis(),
@@ -74,10 +74,10 @@ class DBTest {
                 "value", 84
         );
 
-        DB.writeToBucket(bucketName, fieldValues1);
-        DB.writeToBucket(bucketName, fieldValues2);
+        Engine.writeToBucket(bucketName, fieldValues1);
+        Engine.writeToBucket(bucketName, fieldValues2);
 
-        ReadResponse response = DB.readMostRecent(bucketName);
+        ReadResponse response = Engine.readMostRecent(bucketName);
 
         assertEquals(84, response.getData().get("value"));
     }
@@ -90,7 +90,7 @@ class DBTest {
                 new Field("value", FieldType.INT, 4)
         );
 
-        DB.createBucket(bucketName, fields);
+        Engine.createBucket(bucketName, fields);
 
         Map<String, Object> fieldValues1 = Map.of(
                 "timestamp", System.currentTimeMillis(),
@@ -102,10 +102,10 @@ class DBTest {
                 "value", 84
         );
 
-        DB.writeToBucket(bucketName, fieldValues1);
-        DB.writeToBucket(bucketName, fieldValues2);
+        Engine.writeToBucket(bucketName, fieldValues1);
+        Engine.writeToBucket(bucketName, fieldValues2);
 
-        List<ReadResponse> responses = DB.readAll(bucketName);
+        List<ReadResponse> responses = Engine.readAll(bucketName);
 
         assertEquals(2, responses.size());
         assertEquals(42, responses.get(0).getData().get("value"));
@@ -120,7 +120,7 @@ class DBTest {
                 new Field("value", FieldType.LONG, 8) // Using LONG to potentially store larger counts if needed
         );
 
-        DB.createBucket(bucketName, fields);
+        Engine.createBucket(bucketName, fields);
 
         Map<String, Object> fieldValues = Map.of(
                 "timestamp", System.currentTimeMillis(),
@@ -131,7 +131,7 @@ class DBTest {
         long startTime = System.currentTimeMillis();
 
         for (int i = 0; i < numWrites; i++) {
-            DB.writeToBucket(bucketName, fieldValues);
+            Engine.writeToBucket(bucketName, fieldValues);
         }
 
         long endTime = System.currentTimeMillis();
@@ -140,7 +140,7 @@ class DBTest {
         System.out.println(String.format("Wrote %d records in %d ms (%f records/ms)",
                 numWrites, duration, (double) numWrites / duration));
 
-        assertEquals(numWrites, DB.BUCKET_METADATA_MAP.get(bucketName).getRecordAmount());
+        assertEquals(numWrites, Engine.BUCKET_METADATA_MAP.get(bucketName).getRecordAmount());
         assertTrue(duration < 5000, "Write speed is slower than expected (adjust threshold as needed)"); // Example threshold
     }
 
@@ -152,7 +152,7 @@ class DBTest {
                 new Field("value", FieldType.INT, 4)
         );
 
-        DB.createBucket(bucketName, fields);
+        Engine.createBucket(bucketName, fields);
 
         long now = System.currentTimeMillis();
 
@@ -166,10 +166,10 @@ class DBTest {
                 "value", 84
         );
 
-        DB.writeToBucket(bucketName, fieldValues1);
-        DB.writeToBucket(bucketName, fieldValues2);
+        Engine.writeToBucket(bucketName, fieldValues1);
+        Engine.writeToBucket(bucketName, fieldValues2);
 
-        List<ReadResponse> responses = DB.readInTimeRange(bucketName, now - 2000, now);
+        List<ReadResponse> responses = Engine.readInTimeRange(bucketName, now - 2000, now);
 
         assertEquals(1, responses.size());
         assertEquals(42, responses.get(0).getData().get("value"));

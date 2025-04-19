@@ -11,7 +11,7 @@ import java.io.*;
 import java.nio.file.Files;
 import java.util.*;
 
-public class DB {
+public class Engine {
     public static final File DIR = new File("grug_tsdb");
     public static final ObjectMapper MAPPER = new ObjectMapper();
     public static final Map<String, BucketMetadata> BUCKET_METADATA_MAP = new HashMap<>();

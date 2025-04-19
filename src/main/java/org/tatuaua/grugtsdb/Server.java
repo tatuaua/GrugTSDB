@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 @Slf4j
-public class UDPServer {
+public class Server {
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final Map<ActionType, String> RESPONSE_MESSAGES = Map.of(
             ActionType.CREATE_BUCKET, "Bucket created successfully: %s",
@@ -31,7 +31,7 @@ public class UDPServer {
     private final byte[] buffer = new byte[bufferSize];
     private final DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
 
-    public UDPServer(int port) {
+    public Server(int port) {
         this.port = port;
     }
 
@@ -97,7 +97,7 @@ public class UDPServer {
                 sendResponse(packet, errorMessage);
                 return;
             }
-            DB.createBucket(createBucketAction.getBucketName(), createBucketAction.getFields());
+            Engine.createBucket(createBucketAction.getBucketName(), createBucketAction.getFields());
             String successMessage = String.format(RESPONSE_MESSAGES.get(ActionType.CREATE_BUCKET), createBucketAction.getBucketName());
             sendResponse(packet, successMessage);
             log.info(successMessage);
@@ -117,7 +117,7 @@ public class UDPServer {
                 sendResponse(packet, errorMessage);
                 return;
             }
-            DB.writeToBucket(writeAction.getBucketName(), writeAction.getFieldValues());
+            Engine.writeToBucket(writeAction.getBucketName(), writeAction.getFieldValues());
             String successMessage = String.format(RESPONSE_MESSAGES.get(ActionType.WRITE), writeAction.getBucketName());
             sendResponse(packet, successMessage);
             log.debug(successMessage);
@@ -135,8 +135,8 @@ public class UDPServer {
             String readResult = MAPPER.writerWithDefaultPrettyPrinter()
                     .writeValueAsString(
                             switch (readAction.getType()) {
-                                case FULL -> DB.readAll(readAction.getBucketName());
-                                case MOST_RECENT -> DB.readMostRecent(readAction.getBucketName());
+                                case FULL -> Engine.readAll(readAction.getBucketName());
+                                case MOST_RECENT -> Engine.readMostRecent(readAction.getBucketName());
                             }
                     );
             sendResponse(packet, readResult);
@@ -232,6 +232,5 @@ public class UDPServer {
         return socket != null && socket.isClosed();
     }
 
-    private record Subscriber(InetAddress address, int port, List<String> bucketsToStream) {
-    }
+    private record Subscriber(InetAddress address, int port, List<String> bucketsToStream) {}
 }
