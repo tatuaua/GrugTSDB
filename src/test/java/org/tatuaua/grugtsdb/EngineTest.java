@@ -12,13 +12,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class EngineTest {
 
-    @BeforeEach
-    void setUp() throws IOException {
-        // Clear the database directory before each test
-        Engine.BUCKET_METADATA_MAP.clear();
-        Engine.DIR.delete();
-        Engine.DIR.mkdir();
-    }
 
     @Test
     void testCreateBucket() throws IOException {
@@ -28,7 +21,7 @@ class EngineTest {
                 new Field("value", FieldType.INT, 4)
         );
 
-        Engine.createBucket(bucketName, fields);
+        Engine.createBucket(bucketName, fields, 0);
 
         assertTrue(Engine.BUCKET_METADATA_MAP.containsKey(bucketName));
         assertEquals(fields, Engine.BUCKET_METADATA_MAP.get(bucketName).getFields());
@@ -42,7 +35,7 @@ class EngineTest {
                 new Field("value", FieldType.INT, 4)
         );
 
-        Engine.createBucket(bucketName, fields);
+        Engine.createBucket(bucketName, fields, 0);
 
         Map<String, Object> fieldValues = Map.of(
                 "timestamp", System.currentTimeMillis(),
@@ -62,7 +55,7 @@ class EngineTest {
                 new Field("value", FieldType.INT, 4)
         );
 
-        Engine.createBucket(bucketName, fields);
+        Engine.createBucket(bucketName, fields, 0);
 
         Map<String, Object> fieldValues1 = Map.of(
                 "timestamp", System.currentTimeMillis(),
@@ -90,7 +83,7 @@ class EngineTest {
                 new Field("value", FieldType.INT, 4)
         );
 
-        Engine.createBucket(bucketName, fields);
+        Engine.createBucket(bucketName, fields, 0);
 
         Map<String, Object> fieldValues1 = Map.of(
                 "timestamp", System.currentTimeMillis(),
@@ -120,7 +113,7 @@ class EngineTest {
                 new Field("value", FieldType.LONG, 8) // Using LONG to potentially store larger counts if needed
         );
 
-        Engine.createBucket(bucketName, fields);
+        Engine.createBucket(bucketName, fields, 0);
 
         Map<String, Object> fieldValues = Map.of(
                 "timestamp", System.currentTimeMillis(),
@@ -152,7 +145,7 @@ class EngineTest {
                 new Field("value", FieldType.INT, 4)
         );
 
-        Engine.createBucket(bucketName, fields);
+        Engine.createBucket(bucketName, fields, 0);
 
         long now = System.currentTimeMillis();
 
@@ -183,7 +176,7 @@ class EngineTest {
                 new Field("value", FieldType.INT, 4)
         );
 
-        Engine.createBucket(bucketName, fields);
+        Engine.createBucket(bucketName, fields, 0);
 
         long now = System.currentTimeMillis();
 

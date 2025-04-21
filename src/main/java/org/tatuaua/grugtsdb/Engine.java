@@ -1,6 +1,7 @@
 package org.tatuaua.grugtsdb;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.tatuaua.grugtsdb.model.BucketMetadata;
 import org.tatuaua.grugtsdb.model.Field;
 import org.tatuaua.grugtsdb.model.FieldType;
@@ -11,26 +12,27 @@ import java.io.*;
 import java.nio.file.Files;
 import java.util.*;
 
+import static org.tatuaua.grugtsdb.Utils.MAPPER;
+
+@Slf4j
 public class Engine {
     public static final File DIR = new File("grug_tsdb");
-    public static final ObjectMapper MAPPER = new ObjectMapper();
     public static final Map<String, BucketMetadata> BUCKET_METADATA_MAP = new HashMap<>();
 
     static {
-        try {
-            if (DIR.exists()) {
-                FileUtils.deleteDirectory(DIR);
+        for(BucketMetadata metadata : Utils.readBucketMetadata(DIR)) {
+            try {
+                createBucket(metadata.getName(), metadata.getFields(), metadata.getRecordAmount());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
-            Files.createDirectories(DIR.toPath());
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to initialize database directory", e);
         }
     }
 
-    public static void createBucket(String bucketName, List<Field> fields) throws IOException {
+    public static void createBucket(String bucketName, List<Field> fields, long recordAmount) throws IOException {
         File bucketFile = new File(DIR, bucketName + ".grug");
         if (!bucketFile.createNewFile()) {
-            throw new IOException("Bucket '" + bucketName + "' already exists");
+            log.info("File for bucket {} already exists", bucketName);
         }
 
         DataOutputStream dos = new DataOutputStream(
@@ -41,14 +43,14 @@ public class Engine {
                 bucketFile, "r"
         );
 
-        BucketMetadata metadata = new BucketMetadata(dos, raf, calculateRecordSize(fields), 0, fields);
+        BucketMetadata metadata = new BucketMetadata(dos, raf, calculateRecordSize(fields), recordAmount, bucketName, fields);
 
         writeBucketMetadata(bucketName, metadata);
         BUCKET_METADATA_MAP.put(bucketName, metadata);
     }
 
     private static void writeBucketMetadata(String bucketName, BucketMetadata metadata) throws IOException {
-        File metadataFile = new File(DIR, bucketName + "_meta.json");
+        File metadataFile = new File(DIR, bucketName + ".grug_meta");
         try (FileOutputStream fos = new FileOutputStream(metadataFile)) {
             String metadataJson = MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(metadata);
             fos.write(metadataJson.getBytes());
@@ -189,6 +191,22 @@ public class Engine {
     }
 
     public static ReadResponse readAvgInTimeRange(String bucketName, long start, long end, String fieldName) throws IOException {
+        return calculateAggregateInTimeRange(bucketName, start, end, fieldName, "avg");
+    }
+
+    public static ReadResponse readSumInTimeRange(String bucketName, long start, long end, String fieldName) throws IOException {
+        return calculateAggregateInTimeRange(bucketName, start, end, fieldName, "sum");
+    }
+
+    public static ReadResponse readMinInTimeRange(String bucketName, long start, long end, String fieldName) throws IOException {
+        return calculateAggregateInTimeRange(bucketName, start, end, fieldName, "min");
+    }
+
+    public static ReadResponse readMaxInTimeRange(String bucketName, long start, long end, String fieldName) throws IOException {
+        return calculateAggregateInTimeRange(bucketName, start, end, fieldName, "max");
+    }
+
+    private static ReadResponse calculateAggregateInTimeRange(String bucketName, long start, long end, String fieldName, String operation) throws IOException {
         BucketMetadata metadata = BUCKET_METADATA_MAP.get(bucketName);
         if (metadata.getRecordAmount() < 1) {
             throw new IOException("Tried to read empty bucket");
@@ -208,32 +226,54 @@ public class Engine {
         }
 
         if (!(targetField.getType() == FieldType.INT || targetField.getType() == FieldType.DOUBLE || targetField.getType() == FieldType.LONG)) {
-            throw new IllegalArgumentException("Cannot calculate average of field type: " + targetField.getType());
+            throw new IllegalArgumentException("Cannot calculate " + operation + " of field type: " + targetField.getType());
         }
 
         List<ReadResponse> records = readInTimeRange(bucketName, start, end);
 
         if (records.isEmpty()) {
-            throw new IOException("No records to calculate average on");
+            throw new IOException("No records to calculate " + operation + " on");
         }
 
-        double sum = 0;
+        double result = 0;
+        boolean firstValue = true;
+
         for (ReadResponse record : records) {
             Object value = record.getData().get(fieldName);
             if (value != null) {
+                double numericValue;
                 switch (targetField.getType()) {
-                    case INT -> sum += (Integer) value;
-                    case DOUBLE -> sum += (Double) value;
-                    case LONG -> sum += (Long) value;
-                    default -> {
-                        throw new IllegalStateException("Unexpected field type during average calculation: " + targetField.getType());
+                    case INT -> numericValue = (Integer) value;
+                    case DOUBLE -> numericValue = (Double) value;
+                    case LONG -> numericValue = (Long) value;
+                    default -> throw new IllegalStateException("Unexpected field type during " + operation + " calculation: " + targetField.getType());
+                }
+
+                switch (operation.toLowerCase()) {
+                    case "sum" -> result += numericValue;
+                    case "avg" -> result += numericValue;
+                    case "min" -> {
+                        if (firstValue || numericValue < result) {
+                            result = numericValue;
+                            firstValue = false;
+                        }
                     }
+                    case "max" -> {
+                        if (firstValue || numericValue > result) {
+                            result = numericValue;
+                            firstValue = false;
+                        }
+                    }
+                    default -> throw new IllegalArgumentException("Unsupported operation: " + operation);
                 }
             }
         }
 
-        double average = sum / records.size();
-        return new ReadResponse(Map.of(fieldName + "_avg", average));
+        if (operation.equalsIgnoreCase("avg")) {
+            result /= records.size();
+        }
+
+        return new ReadResponse(Map.of(fieldName + "_" + operation.toLowerCase(), result));
     }
     
     private static void readField(BucketMetadata metadata, ReadResponse response, Field field) throws IOException {
