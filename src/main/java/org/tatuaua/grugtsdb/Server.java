@@ -97,7 +97,7 @@ public class Server {
                 sendResponse(packet, errorMessage);
                 return;
             }
-            Engine.createBucket(createBucketAction.getBucketName(), createBucketAction.getFields(), 0);
+            Engine.createBucket(createBucketAction.getBucketName(), createBucketAction.getFields());
             String successMessage = String.format(RESPONSE_MESSAGES.get(ActionType.CREATE_BUCKET), createBucketAction.getBucketName());
             sendResponse(packet, successMessage);
             log.info(successMessage);

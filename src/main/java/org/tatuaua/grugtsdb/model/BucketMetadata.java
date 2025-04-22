@@ -23,6 +23,7 @@ public class BucketMetadata {
     @JsonIgnore
     long recordSize;
 
+    @JsonIgnore
     long recordAmount;
 
     String name;

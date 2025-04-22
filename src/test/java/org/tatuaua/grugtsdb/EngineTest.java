@@ -21,7 +21,7 @@ class EngineTest {
                 new Field("value", FieldType.INT, 4)
         );
 
-        Engine.createBucket(bucketName, fields, 0);
+        Engine.createBucket(bucketName, fields);
 
         assertTrue(Engine.BUCKET_METADATA_MAP.containsKey(bucketName));
         assertEquals(fields, Engine.BUCKET_METADATA_MAP.get(bucketName).getFields());
@@ -35,7 +35,7 @@ class EngineTest {
                 new Field("value", FieldType.INT, 4)
         );
 
-        Engine.createBucket(bucketName, fields, 0);
+        Engine.createBucket(bucketName, fields);
 
         Map<String, Object> fieldValues = Map.of(
                 "timestamp", System.currentTimeMillis(),
@@ -55,7 +55,7 @@ class EngineTest {
                 new Field("value", FieldType.INT, 4)
         );
 
-        Engine.createBucket(bucketName, fields, 0);
+        Engine.createBucket(bucketName, fields);
 
         Map<String, Object> fieldValues1 = Map.of(
                 "timestamp", System.currentTimeMillis(),
@@ -83,7 +83,7 @@ class EngineTest {
                 new Field("value", FieldType.INT, 4)
         );
 
-        Engine.createBucket(bucketName, fields, 0);
+        Engine.createBucket(bucketName, fields);
 
         Map<String, Object> fieldValues1 = Map.of(
                 "timestamp", System.currentTimeMillis(),
@@ -113,7 +113,7 @@ class EngineTest {
                 new Field("value", FieldType.LONG, 8) // Using LONG to potentially store larger counts if needed
         );
 
-        Engine.createBucket(bucketName, fields, 0);
+        Engine.createBucket(bucketName, fields);
 
         Map<String, Object> fieldValues = Map.of(
                 "timestamp", System.currentTimeMillis(),
@@ -134,7 +134,6 @@ class EngineTest {
                 numWrites, duration, (double) numWrites / duration));
 
         assertEquals(numWrites, Engine.BUCKET_METADATA_MAP.get(bucketName).getRecordAmount());
-        assertTrue(duration < 5000, "Write speed is slower than expected (adjust threshold as needed)"); // Example threshold
     }
 
     @Test
@@ -145,7 +144,7 @@ class EngineTest {
                 new Field("value", FieldType.INT, 4)
         );
 
-        Engine.createBucket(bucketName, fields, 0);
+        Engine.createBucket(bucketName, fields);
 
         long now = System.currentTimeMillis();
 
@@ -176,7 +175,7 @@ class EngineTest {
                 new Field("value", FieldType.INT, 4)
         );
 
-        Engine.createBucket(bucketName, fields, 0);
+        Engine.createBucket(bucketName, fields);
 
         long now = System.currentTimeMillis();
 

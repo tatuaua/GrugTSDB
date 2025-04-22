@@ -22,14 +22,14 @@ public class Engine {
     static {
         for(BucketMetadata metadata : Utils.readBucketMetadata(DIR)) {
             try {
-                createBucket(metadata.getName(), metadata.getFields(), metadata.getRecordAmount());
+                createBucket(metadata.getName(), metadata.getFields());
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         }
     }
 
-    public static void createBucket(String bucketName, List<Field> fields, long recordAmount) throws IOException {
+    public static void createBucket(String bucketName, List<Field> fields) throws IOException {
         File bucketFile = new File(DIR, bucketName + ".grug");
         if (!bucketFile.createNewFile()) {
             log.info("File for bucket {} already exists", bucketName);
@@ -43,7 +43,10 @@ public class Engine {
                 bucketFile, "r"
         );
 
-        BucketMetadata metadata = new BucketMetadata(dos, raf, calculateRecordSize(fields), recordAmount, bucketName, fields);
+        long recordSize = calculateRecordSize(fields);
+        long recordAmount = bucketFile.length() / recordSize;
+
+        BucketMetadata metadata = new BucketMetadata(dos, raf, recordSize, recordAmount, bucketName, fields);
 
         writeBucketMetadata(bucketName, metadata);
         BUCKET_METADATA_MAP.put(bucketName, metadata);
