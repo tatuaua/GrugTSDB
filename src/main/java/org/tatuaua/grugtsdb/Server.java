@@ -13,16 +13,10 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 @Slf4j
 public class Server {
     private static final ObjectMapper MAPPER = new ObjectMapper();
-    private static final Map<ActionType, String> RESPONSE_MESSAGES = Map.of(
-            ActionType.CREATE_BUCKET, "Bucket created successfully: %s",
-            ActionType.WRITE, "Data written to bucket: %s",
-            ActionType.CREATE_STREAM, "Stream started for buckets: %s"
-    );
     private static final List<Subscriber> SUBSCRIBERS = new ArrayList<>();
 
     private final int port;
@@ -103,7 +97,7 @@ public class Server {
                 return;
             }
             Engine.createBucket(createBucketAction.getBucketName(), createBucketAction.getFields());
-            String successMessage = String.format(RESPONSE_MESSAGES.get(ActionType.CREATE_BUCKET), createBucketAction.getBucketName());
+            String successMessage = ActionType.getResponseMessage(ActionType.CREATE_BUCKET, createBucketAction.getBucketName());
             sendResponse(packet, successMessage);
             log.info(successMessage);
         } catch (IOException e) {
@@ -123,9 +117,9 @@ public class Server {
                 return;
             }
             Engine.writeToBucket(writeAction.getBucketName(), writeAction.getFieldValues());
-            String successMessage = String.format(RESPONSE_MESSAGES.get(ActionType.WRITE), writeAction.getBucketName());
+            String successMessage = ActionType.getResponseMessage(ActionType.WRITE, writeAction.getBucketName());
             sendResponse(packet, successMessage);
-            log.debug(successMessage);
+            log.info(successMessage);
             notifySubscribers(writeAction);
         } catch (IOException e) {
             String errorMessage = String.format("Error writing to bucket: %s", e.getMessage());
@@ -145,7 +139,7 @@ public class Server {
                             }
                     );
             sendResponse(packet, readResult);
-            log.debug("Read from bucket '{}' with type '{}'. Response: {}", readAction.getBucketName(), readAction.getType(), readResult);
+            log.info("Read from bucket '{}' with type '{}'. Response: {}", readAction.getBucketName(), readAction.getType(), readResult);
         } catch (IOException e) {
             String errorMessage = String.format("Error reading from bucket: %s", e.getMessage());
             log.error(errorMessage);
@@ -162,7 +156,7 @@ public class Server {
                     createStreamAction.getBucketsToStream()
             );
             SUBSCRIBERS.add(newSubscriber);
-            String streamResponseMessage = String.format(RESPONSE_MESSAGES.get(ActionType.CREATE_STREAM), createStreamAction.getBucketsToStream());
+            String streamResponseMessage = ActionType.getResponseMessage(ActionType.CREATE_STREAM, createStreamAction.getBucketsToStream().toString());
             sendResponse(packet, MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(streamResponseMessage));
             log.info("{} for subscriber {}:{}", streamResponseMessage, packet.getAddress().getHostAddress(), packet.getPort());
         } catch (IOException e) {
@@ -183,7 +177,7 @@ public class Server {
             if (subscriber.bucketsToStream().contains(writeAction.getBucketName())) {
                 DatagramPacket streamPacket = new DatagramPacket(dataToSend, dataToSend.length, subscriber.address(), subscriber.port());
                 socket.send(streamPacket);
-                log.debug("Sent update for bucket '{}' to stream subscriber {}:{}", writeAction.getBucketName(), subscriber.address().getHostAddress(), subscriber.port());
+                log.info("Sent update for bucket '{}' to stream subscriber {}:{}", writeAction.getBucketName(), subscriber.address().getHostAddress(), subscriber.port());
             }
         }
     }
@@ -207,7 +201,7 @@ public class Server {
 
         try {
             socket.send(responsePacket);
-            log.debug("Sent response '{}' to {}:{}", response, packet.getAddress().getHostAddress(), packet.getPort());
+            log.info("Sent response '{}' to {}:{}", response, packet.getAddress().getHostAddress(), packet.getPort());
         } catch (IOException e) {
             log.error("Error sending response to {}:{}: {}", packet.getAddress().getHostAddress(), packet.getPort(), e.getMessage());
         }
