@@ -12,6 +12,22 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class EngineTest {
 
+    @BeforeAll
+    static void clearDatabase() {
+        Engine.clearDatabase();
+    }
+
+    // Simulates starting the engine
+    @BeforeEach
+    void generateMetadata() {
+        Engine.generateMetadata();
+    }
+
+    // Simulates stopping the engine
+    @AfterEach
+    void clearMetadata() {
+        Engine.clearMetadata();
+    }
 
     @Test
     void testCreateBucket() throws IOException {

@@ -1,15 +1,14 @@
 package org.tatuaua.grugtsdb;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.tatuaua.grugtsdb.model.BucketMetadata;
 import org.tatuaua.grugtsdb.model.Field;
 import org.tatuaua.grugtsdb.model.FieldType;
-import org.apache.commons.io.FileUtils;
 import org.tatuaua.grugtsdb.model.ReadResponse;
 
 import java.io.*;
-import java.nio.file.Files;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
 
 import static org.tatuaua.grugtsdb.Utils.MAPPER;
@@ -17,9 +16,9 @@ import static org.tatuaua.grugtsdb.Utils.MAPPER;
 @Slf4j
 public class Engine {
     public static final File DIR = new File("grug_tsdb");
-    public static final Map<String, BucketMetadata> BUCKET_METADATA_MAP = new HashMap<>();
+    public static Map<String, BucketMetadata> BUCKET_METADATA_MAP = new HashMap<>();
 
-    static {
+    public static void generateMetadata() {
         for(BucketMetadata metadata : Utils.readBucketMetadata(DIR)) {
             try {
                 createBucket(metadata.getName(), metadata.getFields());
@@ -27,6 +26,28 @@ public class Engine {
                 throw new RuntimeException(e);
             }
         }
+    }
+
+    public static void clearMetadata() {
+        BUCKET_METADATA_MAP = new HashMap<>();
+    }
+
+    public static void clearDatabase() {
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(DIR.toPath())) {
+            for (Path file : stream) {
+                if (Files.isRegularFile(file)) { // Check if it's a regular file
+                    try {
+                        Files.delete(file);
+                        System.out.println("Deleted file: " + file.getFileName());
+                    } catch (IOException e) {
+                        System.err.println("Failed to delete file: " + file.getFileName() + " - " + e.getMessage());
+                    }
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("Error accessing directory: " + e.getMessage());
+        }
+        BUCKET_METADATA_MAP = new HashMap<>();
     }
 
     public static void createBucket(String bucketName, List<Field> fields) throws IOException {
