@@ -10,6 +10,4 @@
 * Basic Aggregations: Support for common aggregate functions (e.g., average, sum, min, max, count) over time windows.
 
 ## Roadmap:
-* Data Retention Policies: Mechanisms to automatically manage data lifecycle, including deletion or archiving of older data.
-* Data Tagging/Metadata: Ability to associate additional labels or metadata with time series data for filtering and organization.
-* Persistence: Ability to restart engine without losing all data
+* Concurrency: Implement concurrency control to handle multiple simultaneous writes and reads.
