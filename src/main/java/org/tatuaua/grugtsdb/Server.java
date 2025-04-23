@@ -72,10 +72,10 @@ public class Server {
             ActionType actionType = ActionType.fromString(actionTypeStr);
 
             switch (actionType) {
-                case CREATE_BUCKET -> handleCreateBucket(packet);
-                case WRITE -> handleWrite(packet);
-                case READ -> handleRead(packet);
-                case CREATE_STREAM -> handleCreateStream(packet);
+                case CREATE_BUCKET -> handleCreateBucket(packet, rootNode);
+                case WRITE -> handleWrite(packet, rootNode);
+                case READ -> handleRead(packet, rootNode);
+                case CREATE_STREAM -> handleCreateStream(packet, rootNode);
                 default -> handleUnknownAction(packet, actionType.toString());
             }
         } catch (JsonProcessingException e) {
@@ -87,9 +87,9 @@ public class Server {
         }
     }
 
-    private void handleCreateBucket(DatagramPacket packet) throws IOException {
+    private void handleCreateBucket(DatagramPacket packet, JsonNode rootNode) throws IOException {
         try {
-            CreateBucketAction createBucketAction = MAPPER.readValue(packet.getData(), 0, packet.getLength(), CreateBucketAction.class);
+            CreateBucketAction createBucketAction = MAPPER.treeToValue(rootNode, CreateBucketAction.class);
             if (!createBucketAction.hasTimestamp()) {
                 String errorMessage = String.format("Error creating bucket '%s': missing timestamp", createBucketAction.getBucketName());
                 log.error(errorMessage);
@@ -107,9 +107,9 @@ public class Server {
         }
     }
 
-    private void handleWrite(DatagramPacket packet) throws IOException {
+    private void handleWrite(DatagramPacket packet, JsonNode rootNode) throws IOException {
         try {
-            WriteAction writeAction = MAPPER.readValue(packet.getData(), 0, packet.getLength(), WriteAction.class);
+            WriteAction writeAction = MAPPER.treeToValue(rootNode, WriteAction.class);
             if (!writeAction.hasValidTimestamp()) {
                 String errorMessage = String.format("Error writing to bucket '%s': invalid timestamp", writeAction.getBucketName());
                 log.error(errorMessage);
@@ -128,9 +128,9 @@ public class Server {
         }
     }
 
-    private void handleRead(DatagramPacket packet) throws IOException {
+    private void handleRead(DatagramPacket packet, JsonNode rootNode) throws IOException {
         try {
-            ReadAction readAction = MAPPER.readValue(packet.getData(), 0, packet.getLength(), ReadAction.class);
+            ReadAction readAction = MAPPER.treeToValue(rootNode, ReadAction.class);
             String readResult = MAPPER.writerWithDefaultPrettyPrinter()
                     .writeValueAsString(
                             switch (readAction.getType()) {
@@ -147,9 +147,9 @@ public class Server {
         }
     }
 
-    private void handleCreateStream(DatagramPacket packet) throws IOException {
+    private void handleCreateStream(DatagramPacket packet, JsonNode rootNode) throws IOException {
         try {
-            CreateStreamAction createStreamAction = MAPPER.readValue(packet.getData(), 0, packet.getLength(), CreateStreamAction.class);
+            CreateStreamAction createStreamAction = MAPPER.treeToValue(rootNode, CreateStreamAction.class);
             Subscriber newSubscriber = new Subscriber(
                     packet.getAddress(),
                     packet.getPort(),
