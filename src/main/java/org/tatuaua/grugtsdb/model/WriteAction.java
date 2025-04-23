@@ -4,7 +4,10 @@ import lombok.Data;
 
 import java.util.Map;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class WriteAction {
     String bucketName;
     Map<String, Object> fieldValues;

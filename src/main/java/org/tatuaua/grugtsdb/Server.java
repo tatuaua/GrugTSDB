@@ -35,6 +35,11 @@ public class Server {
         this.port = port;
     }
 
+    public static void main(String[] args) {
+        Server server = new Server(12345);
+        server.start();
+    }
+
     public void stop() {
         if (socket != null && !socket.isClosed()) {
             socket.close();

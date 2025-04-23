@@ -8,7 +8,6 @@ import org.tatuaua.grugtsdb.model.ReadResponse;
 
 import java.io.*;
 import java.nio.file.*;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
 
 import static org.tatuaua.grugtsdb.Utils.MAPPER;
