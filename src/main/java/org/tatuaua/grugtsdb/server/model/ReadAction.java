@@ -1,4 +1,4 @@
-package org.tatuaua.grugtsdb.model;
+package org.tatuaua.grugtsdb.server.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 

@@ -1,10 +1,9 @@
-package org.tatuaua.grugtsdb;
+package org.tatuaua.grugtsdb.server;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.tatuaua.grugtsdb.model.*;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -13,6 +12,15 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.tatuaua.grugtsdb.engine.Engine;
+import org.tatuaua.grugtsdb.server.model.ActionType;
+import org.tatuaua.grugtsdb.server.model.AggregateReadAction;
+import org.tatuaua.grugtsdb.server.model.CreateBucketAction;
+import org.tatuaua.grugtsdb.server.model.CreateStreamAction;
+import org.tatuaua.grugtsdb.server.model.ErrorResponse;
+import org.tatuaua.grugtsdb.server.model.ReadAction;
+import org.tatuaua.grugtsdb.server.model.WriteAction;
 
 @Slf4j
 public class Server {
@@ -75,6 +83,7 @@ public class Server {
                 case CREATE_BUCKET -> handleCreateBucket(packet, rootNode);
                 case WRITE -> handleWrite(packet, rootNode);
                 case READ -> handleRead(packet, rootNode);
+                case AGGREGATE_READ -> handleAggregateRead(packet, rootNode);
                 case CREATE_STREAM -> handleCreateStream(packet, rootNode);
                 default -> handleUnknownAction(packet, actionType.toString());
             }
@@ -142,6 +151,28 @@ public class Server {
             log.info("Read from bucket '{}' with type '{}'. Response: {}", readAction.getBucketName(), readAction.getType(), readResult);
         } catch (IOException e) {
             String errorMessage = String.format("Error reading from bucket: %s", e.getMessage());
+            log.error(errorMessage);
+            sendResponse(packet, errorMessage);
+        }
+    }
+
+    private void handleAggregateRead(DatagramPacket packet, JsonNode rootNode) throws IOException {
+        try {
+            AggregateReadAction aggregateReadAction = MAPPER.treeToValue(rootNode, AggregateReadAction.class);
+            String readResult = MAPPER.writerWithDefaultPrettyPrinter()
+                    .writeValueAsString(
+                        Engine.aggregateRead(
+                            aggregateReadAction.getBucketName(),
+                            aggregateReadAction.getTimeRangeStart(),
+                            aggregateReadAction.getTimeRangeEnd(),
+                            aggregateReadAction.getFieldName(),
+                            aggregateReadAction.getAggregationType()
+                        )
+                    );
+            sendResponse(packet, readResult);
+            log.info("Aggregate read from bucket '{}' with type '{}'. Response: {}", aggregateReadAction.getBucketName(), aggregateReadAction.getAggregationType(), readResult);
+        } catch (IOException e) {
+            String errorMessage = String.format("Error performing aggregate read: %s", e.getMessage());
             log.error(errorMessage);
             sendResponse(packet, errorMessage);
         }

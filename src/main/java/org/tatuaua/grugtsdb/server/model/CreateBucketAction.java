@@ -1,8 +1,10 @@
-package org.tatuaua.grugtsdb.model;
+package org.tatuaua.grugtsdb.server.model;
 
 import lombok.Data;
 
 import java.util.List;
+
+import org.tatuaua.grugtsdb.engine.model.Field;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 

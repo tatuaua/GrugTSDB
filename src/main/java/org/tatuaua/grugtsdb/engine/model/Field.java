@@ -1,4 +1,4 @@
-package org.tatuaua.grugtsdb.model;
+package org.tatuaua.grugtsdb.engine.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

@@ -1,17 +1,17 @@
 package org.tatuaua.grugtsdb;
 
 import lombok.extern.slf4j.Slf4j;
-import org.tatuaua.grugtsdb.model.Field;
-import org.tatuaua.grugtsdb.model.FieldType;
-import org.tatuaua.grugtsdb.model.ReadResponse;
+
+import static org.tatuaua.grugtsdb.engine.Engine.*;
 
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.tatuaua.grugtsdb.Engine.*;
-import static org.tatuaua.grugtsdb.Engine.createBucket;
+import org.tatuaua.grugtsdb.engine.model.Field;
+import org.tatuaua.grugtsdb.engine.model.FieldType;
+import org.tatuaua.grugtsdb.engine.model.ReadResponse;
 
 @Slf4j
 public class Main {

@@ -8,6 +8,7 @@
 * Timestamping: Ability to associate data points with specific points in time.
 * Querying by Time Range: Efficient retrieval of data within specified time intervals.
 * Basic Aggregations: Support for common aggregate functions (e.g., average, sum, min, max, count) over time windows.
+* Web Interface: A simple web interface to interact with the time series database, allowing users to insert and query data.
 
 ## Roadmap:
 * Concurrency: Implement concurrency control to handle multiple simultaneous writes and reads.

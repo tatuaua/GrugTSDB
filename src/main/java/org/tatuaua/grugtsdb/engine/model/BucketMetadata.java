@@ -1,4 +1,4 @@
-package org.tatuaua.grugtsdb.model;
+package org.tatuaua.grugtsdb.engine.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;

@@ -1,19 +1,22 @@
-package org.tatuaua.grugtsdb;
+package org.tatuaua.grugtsdb.engine;
 
 import lombok.extern.slf4j.Slf4j;
-import org.tatuaua.grugtsdb.model.BucketMetadata;
-import org.tatuaua.grugtsdb.model.Field;
-import org.tatuaua.grugtsdb.model.FieldType;
-import org.tatuaua.grugtsdb.model.ReadResponse;
+
+import org.tatuaua.grugtsdb.Utils;
+import org.tatuaua.grugtsdb.engine.model.BucketMetadata;
+import org.tatuaua.grugtsdb.engine.model.Field;
+import org.tatuaua.grugtsdb.engine.model.FieldType;
+import org.tatuaua.grugtsdb.engine.model.ReadResponse;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.*;
 import java.nio.file.*;
 import java.util.*;
 
-import static org.tatuaua.grugtsdb.Utils.MAPPER;
-
 @Slf4j
 public class Engine {
+    public static final ObjectMapper MAPPER = new ObjectMapper();
     public static final File DIR = new File("grug_tsdb");
     public static Map<String, BucketMetadata> BUCKET_METADATA_MAP = new HashMap<>();
 
@@ -213,23 +216,21 @@ public class Engine {
         return responses;
     }
 
-    public static ReadResponse readAvgInTimeRange(String bucketName, long start, long end, String fieldName) throws IOException {
-        return calculateAggregateInTimeRange(bucketName, start, end, fieldName, "avg");
-    }
+    public static ReadResponse aggregateRead(String bucketName, long start, long end, String fieldName, String operation) throws IOException {
 
-    public static ReadResponse readSumInTimeRange(String bucketName, long start, long end, String fieldName) throws IOException {
-        return calculateAggregateInTimeRange(bucketName, start, end, fieldName, "sum");
-    }
+        if (!(
+            operation.equals("sum") 
+            || operation.equals("avg") 
+            || operation.equals("min") 
+            || operation.equals("max"))) {
 
-    public static ReadResponse readMinInTimeRange(String bucketName, long start, long end, String fieldName) throws IOException {
-        return calculateAggregateInTimeRange(bucketName, start, end, fieldName, "min");
-    }
+            throw new IllegalArgumentException("Unsupported operation: " + operation);
+        }
 
-    public static ReadResponse readMaxInTimeRange(String bucketName, long start, long end, String fieldName) throws IOException {
-        return calculateAggregateInTimeRange(bucketName, start, end, fieldName, "max");
-    }
+        if (start > end) {
+            throw new IllegalArgumentException("Start time must be less than or equal to end time");
+        }
 
-    private static ReadResponse calculateAggregateInTimeRange(String bucketName, long start, long end, String fieldName, String operation) throws IOException {
         BucketMetadata metadata = BUCKET_METADATA_MAP.get(bucketName);
         if (metadata.getRecordAmount() < 1) {
             throw new IOException("Tried to read empty bucket");
@@ -272,7 +273,7 @@ public class Engine {
                     default -> throw new IllegalStateException("Unexpected field type during " + operation + " calculation: " + targetField.getType());
                 }
 
-                switch (operation.toLowerCase()) {
+                switch (operation) {
                     case "sum" -> result += numericValue;
                     case "avg" -> result += numericValue;
                     case "min" -> {
@@ -287,7 +288,6 @@ public class Engine {
                             firstValue = false;
                         }
                     }
-                    default -> throw new IllegalArgumentException("Unsupported operation: " + operation);
                 }
             }
         }
@@ -296,7 +296,7 @@ public class Engine {
             result /= records.size();
         }
 
-        return new ReadResponse(Map.of(fieldName + "_" + operation.toLowerCase(), result));
+        return new ReadResponse(Map.of(fieldName + "_" + operation, result));
     }
     
     private static void readField(BucketMetadata metadata, ReadResponse response, Field field) throws IOException {

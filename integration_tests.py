@@ -43,7 +43,7 @@ class ServerIntegrationTests(unittest.TestCase):
             # logging.debug(f"Decoded response: {decoded_data}")
 
             # Only attempt to parse JSON if the original request was a 'read' action
-            if action_type == "read":
+            if action_type == "read" or action_type == "aggregateRead":
                 try:
                     # logging.debug("Attempting JSON decode for 'read' action.")
                     return json.loads(decoded_data)
@@ -202,6 +202,61 @@ class ServerIntegrationTests(unittest.TestCase):
             {"data": {"timestamp": ts2, "value": 84}}
         ]
         self.assertCountEqual(response, expected_data)
+
+    def test_aggregate_read(self):
+        """Tests reading aggregated data from a bucket."""
+        # Create a bucket and write multiple records (use unique name)
+        bucket_name = f"aggregate_read_bucket_{int(time.time())}"
+        create_message = {
+            "actionType": "createBucket",
+            "bucketName": bucket_name,
+            "fields": [
+                {"name": "timestamp", "type": "LONG", "size": 8},
+                {"name": "value", "type": "INT", "size": 4}
+            ]
+        }
+        self._send_and_receive(create_message)
+        # Ignore response
+        write_message = {
+            "actionType": "write",
+            "bucketName": bucket_name,
+            "fieldValues": {
+                "timestamp": 315532800000,
+                "value": 42
+            }
+        }
+        self._send_and_receive(write_message) # Ignore response
+        write_message = {
+            "actionType": "write",
+            "bucketName": bucket_name,
+            "fieldValues": {
+                "timestamp": 315532800001,
+                "value": 84
+            }
+        }
+        self._send_and_receive(write_message)
+        write_message = {
+            "actionType": "write",
+            "bucketName": bucket_name,
+            "fieldValues": {
+                "timestamp": 315532800003,
+                "value": 126
+            }
+        }
+        self._send_and_receive(write_message) # Ignore response
+
+        aggregate_message = {
+            "actionType": "aggregateRead",
+            "bucketName": bucket_name,
+            "aggregationType": "sum",
+            "fieldName": "value",
+            "timeRangeStart": 315532799999,
+            "timeRangeEnd": 315532800002
+        }
+        response = self._send_and_receive(aggregate_message)
+        # Expecting JSON (dict) response for aggregateRead
+        self.assertIsInstance(response, dict)
+        self.assertEqual(response["data"]["value_sum"], 42 + 84)
 
     def test_create_stream(self):
         """Tests creating a stream."""

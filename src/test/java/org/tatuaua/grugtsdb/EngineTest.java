@@ -1,9 +1,10 @@
 package org.tatuaua.grugtsdb;
 
 import org.junit.jupiter.api.*;
-import org.tatuaua.grugtsdb.model.Field;
-import org.tatuaua.grugtsdb.model.FieldType;
-import org.tatuaua.grugtsdb.model.ReadResponse;
+import org.tatuaua.grugtsdb.engine.Engine;
+import org.tatuaua.grugtsdb.engine.model.Field;
+import org.tatuaua.grugtsdb.engine.model.FieldType;
+import org.tatuaua.grugtsdb.engine.model.ReadResponse;
 
 import java.io.IOException;
 import java.util.*;
@@ -214,7 +215,7 @@ class EngineTest {
         Engine.writeToBucket(bucketName, fieldValues2);
         Engine.writeToBucket(bucketName, fieldValues3);
 
-        ReadResponse response = Engine.readAvgInTimeRange(bucketName, now - 2000, now, "value");
+        ReadResponse response = Engine.aggregateRead(bucketName, now - 2000, now, "value", "avg");
 
         assertNotNull(response);
         assertEquals(43.0, response.getData().get("value_avg"));

@@ -1,7 +1,6 @@
 package org.tatuaua.grugtsdb;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.tatuaua.grugtsdb.model.BucketMetadata;
 
 import java.io.File;
 import java.io.IOException;
@@ -13,9 +12,9 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Utils {
+import org.tatuaua.grugtsdb.engine.model.BucketMetadata;
 
-    public static final ObjectMapper MAPPER = new ObjectMapper();
+public class Utils {
 
     public static byte[] stringTo256ByteArray(String input) {
         byte[] stringBytes = (input != null ? input : "").getBytes(StandardCharsets.UTF_8);
@@ -66,6 +65,7 @@ public class Utils {
     }
 
     public static List<BucketMetadata> readBucketMetadata(File dir) {
+        ObjectMapper MAPPER = new ObjectMapper();
         List<BucketMetadata> metadataList = new ArrayList<>();
         Path directory = Paths.get(dir.getName());
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(directory,
