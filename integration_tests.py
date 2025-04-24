@@ -8,7 +8,7 @@ import logging # Optional: for better debugging if needed
 # logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class ServerIntegrationTests(unittest.TestCase):
-    SERVER_ADDRESS = ('localhost', 12345)  # Replace with your server's address and port
+    SERVER_ADDRESS = ('localhost', 8080)  # Replace with your server's address and port
     BUFFER_SIZE = 1024
     TIMEOUT = 2
 

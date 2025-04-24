@@ -6,16 +6,22 @@ import org.tatuaua.grugtsdb.engine.model.Field;
 import org.tatuaua.grugtsdb.engine.model.FieldType;
 import org.tatuaua.grugtsdb.engine.model.ReadResponse;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.io.IOException;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@Slf4j
 class EngineTest {
 
     @BeforeAll
+    @AfterAll
     static void clearDatabase() {
+        Engine.clearMetadata();
         Engine.clearDatabase();
+        log.info("Database cleared.");
     }
 
     // Simulates starting the engine
@@ -146,8 +152,8 @@ class EngineTest {
 
         long endTime = System.currentTimeMillis();
         long duration = endTime - startTime;
-
-        System.out.println(String.format("Wrote %d records in %d ms (%f records/ms)",
+        
+        log.info(String.format("Wrote %d records in %d ms (%f records/ms)",
                 numWrites, duration, (double) numWrites / duration));
 
         assertEquals(numWrites, Engine.BUCKET_METADATA_MAP.get(bucketName).getRecordAmount());

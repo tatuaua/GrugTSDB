@@ -35,6 +35,10 @@ public class Engine {
     }
 
     public static void clearDatabase() {
+        if (!DIR.exists()) {
+            return;
+        }
+        
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(DIR.toPath())) {
             for (Path file : stream) {
                 try {
