@@ -79,7 +79,7 @@ public class Utils {
                 }
             }
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            return new ArrayList<>();
         }
         return metadataList;
     }

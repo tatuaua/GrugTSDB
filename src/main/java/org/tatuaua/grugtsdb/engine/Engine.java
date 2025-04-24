@@ -37,13 +37,11 @@ public class Engine {
     public static void clearDatabase() {
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(DIR.toPath())) {
             for (Path file : stream) {
-                if (Files.isRegularFile(file)) { // Check if it's a regular file
-                    try {
-                        Files.delete(file);
-                        System.out.println("Deleted file: " + file.getFileName());
-                    } catch (IOException e) {
-                        System.err.println("Failed to delete file: " + file.getFileName() + " - " + e.getMessage());
-                    }
+                try {
+                    Files.delete(file);
+                    System.out.println("Deleted file: " + file.getFileName());
+                } catch (IOException e) {
+                    System.err.println("Failed to delete file: " + file.getFileName() + " - " + e.getMessage());
                 }
             }
         } catch (IOException e) {
@@ -54,6 +52,11 @@ public class Engine {
 
     public static void createBucket(String bucketName, List<Field> fields) throws IOException {
         File bucketFile = new File(DIR, bucketName + ".grug");
+
+        if (!DIR.exists()) {
+            DIR.mkdir();
+        }
+        
         if (!bucketFile.createNewFile()) {
             log.info("File for bucket {} already exists", bucketName);
         }
