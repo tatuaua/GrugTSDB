@@ -11,4 +11,4 @@
 * Web Interface: A simple web interface to interact with the time series database, allowing users to insert and query data.
 
 ## Roadmap:
-* Concurrency: Implement concurrency control to handle multiple simultaneous writes and reads.
+* Concurrency: Implement concurrency control to handle multiple simultaneous writes and reads
